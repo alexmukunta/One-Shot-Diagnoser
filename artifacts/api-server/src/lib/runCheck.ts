@@ -198,6 +198,7 @@ export async function runMonitorCheck(monitorId: number): Promise<void> {
               id: String(openIncident.id),
               rootCause: openIncident.rootCause,
               startedAt: openIncident.startedAt,
+              durationSeconds,
             },
           );
         }

@@ -34,6 +34,10 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Permissions-Policy", "geolocation=(), camera=(), microphone=()");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; frame-ancestors 'none'",
+  );
   next();
 });
 
@@ -54,6 +58,17 @@ app.use(
       process.env.CLERK_PUBLISHABLE_KEY,
     ),
   })),
+);
+
+app.use(
+  "/api/public",
+  rateLimit({
+    windowMs: 60_000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests — public status API is limited to 60 per minute" },
+  }),
 );
 
 app.use(
