@@ -1,0 +1,145 @@
+You have already built this website.
+
+Your task is not to add new features unless necessary. Your task is to perform a comprehensive professional review and refactoring pass on the entire website and eliminate every sign that the website was rapidly AI-generated or "vibe coded."
+
+Act as a team of senior UX designers, UI designers, frontend engineers, backend engineers, accessibility specialists, QA engineers, and product managers.
+
+Review every page, component, interaction, workflow, and code module.
+
+Objective
+
+The final website should look, feel, and behave as though it was designed, reviewed, tested, and maintained by an experienced professional team over multiple development cycles.
+
+Design Audit
+
+Review all pages and identify:
+
+Inconsistent spacing
+Inconsistent typography
+Inconsistent colors
+Inconsistent button styles
+Inconsistent component behavior
+Weak visual hierarchy
+Generic layouts
+Repetitive design patterns
+
+Refactor everything necessary to create a unified design system.
+
+User Experience Audit
+
+Review all user flows.
+
+Identify:
+
+Confusing navigation
+Unclear calls-to-action
+Unnecessary clicks
+Poor information architecture
+Missing user feedback
+Friction points
+Dead ends
+
+Improve the user experience without changing the core purpose of the website.
+
+Content Audit
+
+Review all text.
+
+Identify and replace:
+
+Generic AI-style wording
+Repetitive language
+Marketing clichés
+Placeholder text
+Vague descriptions
+Unnatural copy
+
+Rewrite content to be specific, purposeful, and professional.
+
+Code Quality Audit
+
+Review the entire codebase.
+
+Identify and fix:
+
+Duplicate code
+Unused code
+Dead files
+Unused dependencies
+Inconsistent naming
+Poor component structure
+Poor state management
+Unnecessary complexity
+
+Refactor while preserving functionality.
+
+Accessibility Audit
+
+Check:
+
+Semantic HTML
+Keyboard navigation
+Screen reader compatibility
+Form accessibility
+Color contrast
+Focus states
+ARIA usage
+
+Fix all accessibility issues.
+
+Performance Audit
+
+Check:
+
+Page load performance
+Image optimization
+Bundle size
+Render efficiency
+Lazy loading opportunities
+Network requests
+Caching opportunities
+
+Optimize where appropriate.
+
+Quality Assurance Audit
+
+Systematically test:
+
+All links
+All buttons
+All forms
+All user flows
+Error states
+Loading states
+Empty states
+Mobile responsiveness
+Tablet responsiveness
+Desktop responsiveness
+
+Fix every issue discovered.
+
+AI-Generated Pattern Detection
+
+Actively search for signs that the website was generated quickly by AI, including:
+
+Repeated section structures
+Repeated card layouts
+Repeated content patterns
+Generic landing-page sections
+Unnecessary animations
+Visual inconsistencies
+Boilerplate features
+Features added without user value
+
+Remove, redesign, or refactor them.
+
+Final Deliverable
+
+Produce:
+
+A list of issues found.
+A list of improvements made.
+The updated production-ready code.
+A final assessment explaining why the website now meets professional commercial standards.
+
+Do not assume the current implementation is correct. Critically evaluate every aspect of the website before approving it.

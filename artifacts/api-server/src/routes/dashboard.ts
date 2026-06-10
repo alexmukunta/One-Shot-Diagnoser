@@ -1,6 +1,6 @@
 import { getAuth } from "@clerk/express";
 import { Router, type IRouter } from "express";
-import { eq, and, gte, sql, count } from "drizzle-orm";
+import { eq, and, gte, sql, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { monitorsTable, monitorChecksTable, incidentsTable, monitorTagsTable, tagsTable } from "@workspace/db";
 import { GetDashboardResponse } from "@workspace/api-zod";
@@ -29,6 +29,7 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+  // Batch: fetch all tags for all monitors in one query
   const tagsByMonitor: Record<number, { id: string; name: string; color: string }[]> = {};
   if (monitorIds.length > 0) {
     const tags = await db
@@ -40,64 +41,69 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
       })
       .from(monitorTagsTable)
       .innerJoin(tagsTable, eq(tagsTable.id, monitorTagsTable.tagId))
-      .where(sql`${monitorTagsTable.monitorId} = ANY(${sql.raw(`ARRAY[${monitorIds.join(",")}]::int[]`)})`)
-      ;
+      .where(inArray(monitorTagsTable.monitorId, monitorIds));
+
     for (const t of tags) {
       if (!tagsByMonitor[t.monitorId]) tagsByMonitor[t.monitorId] = [];
       tagsByMonitor[t.monitorId].push({ id: String(t.tagId), name: t.tagName, color: t.tagColor });
     }
   }
 
-  const monitorList = await Promise.all(
-    monitors.map(async (m) => {
-      const [checks24h, checks7d] = await Promise.all([
-        db
-          .select({ status: monitorChecksTable.status })
+  // Batch: fetch all check statuses for all monitors in a single query (last 7 days covers both 24h and 7d)
+  const allChecks: { monitorId: number; status: string; checkedAt: Date }[] =
+    monitorIds.length > 0
+      ? await db
+          .select({
+            monitorId: monitorChecksTable.monitorId,
+            status: monitorChecksTable.status,
+            checkedAt: monitorChecksTable.checkedAt,
+          })
           .from(monitorChecksTable)
           .where(
             and(
-              eq(monitorChecksTable.monitorId, m.id),
-              gte(monitorChecksTable.checkedAt, since24h)
-            )
-          ),
-        db
-          .select({ status: monitorChecksTable.status })
-          .from(monitorChecksTable)
-          .where(
-            and(
-              eq(monitorChecksTable.monitorId, m.id),
+              inArray(monitorChecksTable.monitorId, monitorIds),
               gte(monitorChecksTable.checkedAt, since7d)
             )
-          ),
-      ]);
+          )
+      : [];
 
-      const uptime24h =
-        checks24h.length > 0
-          ? (checks24h.filter((c) => c.status === "up").length / checks24h.length) * 100
-          : null;
-      const uptime7d =
-        checks7d.length > 0
-          ? (checks7d.filter((c) => c.status === "up").length / checks7d.length) * 100
-          : null;
+  // Group checks by monitorId
+  const checksByMonitor = new Map<number, { status: string; checkedAt: Date }[]>();
+  for (const check of allChecks) {
+    if (!checksByMonitor.has(check.monitorId)) checksByMonitor.set(check.monitorId, []);
+    checksByMonitor.get(check.monitorId)!.push(check);
+  }
 
-      return {
-        id: String(m.id),
-        name: m.name,
-        url: m.url,
-        status: (!m.isActive ? "paused" : m.lastStatus ?? "unknown") as
-          | "up"
-          | "down"
-          | "degraded"
-          | "paused"
-          | "unknown",
-        uptime24h,
-        uptime7d,
-        lastResponseTimeMs: m.lastResponseTimeMs ?? null,
-        lastCheckedAt: m.lastCheckedAt ?? null,
-        tags: tagsByMonitor[m.id] ?? [],
-      };
-    })
-  );
+  const monitorList = monitors.map((m) => {
+    const checks7d = checksByMonitor.get(m.id) ?? [];
+    const checks24h = checks7d.filter((c) => c.checkedAt >= since24h);
+
+    const uptime24h =
+      checks24h.length > 0
+        ? (checks24h.filter((c) => c.status === "up").length / checks24h.length) * 100
+        : null;
+    const uptime7d =
+      checks7d.length > 0
+        ? (checks7d.filter((c) => c.status === "up").length / checks7d.length) * 100
+        : null;
+
+    return {
+      id: String(m.id),
+      name: m.name,
+      url: m.url,
+      status: (!m.isActive ? "paused" : m.lastStatus ?? "unknown") as
+        | "up"
+        | "down"
+        | "degraded"
+        | "paused"
+        | "unknown",
+      uptime24h,
+      uptime7d,
+      lastResponseTimeMs: m.lastResponseTimeMs ?? null,
+      lastCheckedAt: m.lastCheckedAt ?? null,
+      tags: tagsByMonitor[m.id] ?? [],
+    };
+  });
 
   const recentIncidents = await db
     .select({

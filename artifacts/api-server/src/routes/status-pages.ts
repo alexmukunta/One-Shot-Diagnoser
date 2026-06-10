@@ -1,6 +1,6 @@
 import { getAuth } from "@clerk/express";
 import { Router, type IRouter } from "express";
-import { eq, and, desc, gte, sql } from "drizzle-orm";
+import { eq, and, desc, gte, sql, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   statusPagesTable,
@@ -362,19 +362,27 @@ router.get("/public/status/:slug", async (req, res): Promise<void> => {
     (typeof monitorsData)[number]
   >[];
 
-  const activeIncidents = await db
-    .select({
-      id: incidentsTable.id,
-      monitorId: incidentsTable.monitorId,
-      monitorName: monitorsTable.name,
-      startedAt: incidentsTable.startedAt,
-      rootCause: incidentsTable.rootCause,
-    })
-    .from(incidentsTable)
-    .innerJoin(monitorsTable, eq(monitorsTable.id, incidentsTable.monitorId))
-    .where(sql`${incidentsTable.resolvedAt} IS NULL AND ${incidentsTable.monitorId} = ANY(${sql.raw(`ARRAY[${monitorIds.length > 0 ? monitorIds.join(",") : "NULL"}]::int[]`)})`)
-    .orderBy(desc(incidentsTable.startedAt))
-    .limit(5);
+  const activeIncidents =
+    monitorIds.length > 0
+      ? await db
+          .select({
+            id: incidentsTable.id,
+            monitorId: incidentsTable.monitorId,
+            monitorName: monitorsTable.name,
+            startedAt: incidentsTable.startedAt,
+            rootCause: incidentsTable.rootCause,
+          })
+          .from(incidentsTable)
+          .innerJoin(monitorsTable, eq(monitorsTable.id, incidentsTable.monitorId))
+          .where(
+            and(
+              sql`${incidentsTable.resolvedAt} IS NULL`,
+              inArray(incidentsTable.monitorId, monitorIds)
+            )
+          )
+          .orderBy(desc(incidentsTable.startedAt))
+          .limit(5)
+      : [];
 
   const overallStatus: "operational" | "degraded" | "outage" =
     validMonitors.some((m) => m.status === "down")

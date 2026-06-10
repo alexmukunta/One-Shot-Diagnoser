@@ -682,9 +682,25 @@ router.post(
       return;
     }
 
+    // Verify the tag belongs to the same user (prevents cross-user tag association)
+    const [tag] = await db
+      .select({ id: tagsTable.id })
+      .from(tagsTable)
+      .where(
+        and(
+          eq(tagsTable.id, Number(parsed.data.tagId)),
+          eq(tagsTable.userId, userId)
+        )
+      );
+
+    if (!tag) {
+      res.status(404).json({ error: "Tag not found" });
+      return;
+    }
+
     await db
       .insert(monitorTagsTable)
-      .values({ monitorId: monitor.id, tagId: Number(parsed.data.tagId) })
+      .values({ monitorId: monitor.id, tagId: tag.id })
       .onConflictDoNothing();
 
     const tags = await getMonitorTags(monitor.id);

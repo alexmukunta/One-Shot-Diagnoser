@@ -77,8 +77,14 @@ export async function runMonitorCheck(monitorId: number): Promise<void> {
     };
   }
 
+  // "timeout" maps to "degraded" (server reachable but unresponsive — uncertain state)
+  // "error" and "down" map to "down" (definitive failure or wrong response)
   const checkStatus: "up" | "down" | "degraded" =
-    result.status === "up" ? "up" : "down";
+    result.status === "up"
+      ? "up"
+      : result.status === "timeout"
+        ? "degraded"
+        : "down";
 
   await db.insert(monitorChecksTable).values({
     monitorId: monitor.id,
@@ -126,7 +132,12 @@ export async function runMonitorCheck(monitorId: number): Promise<void> {
     }
   }
 
-  if (checkStatus === "down" && previousStatus !== "down") {
+  // Open an incident when transitioning into a failure state from a non-failure state.
+  // "degraded" (timeout) is treated as a failure for incident purposes.
+  const isFailure = checkStatus === "down" || checkStatus === "degraded";
+  const wasFailure = previousStatus === "down" || previousStatus === "degraded";
+
+  if (isFailure && !wasFailure) {
     const [incident] = await db
       .insert(incidentsTable)
       .values({
@@ -154,7 +165,7 @@ export async function runMonitorCheck(monitorId: number): Promise<void> {
         logger.debug({ monitorId }, "No alert channels assigned to monitor — skipping notifications");
       }
     }
-  } else if (checkStatus === "up" && previousStatus === "down") {
+  } else if (checkStatus === "up" && wasFailure) {
     const [openIncident] = await db
       .select()
       .from(incidentsTable)

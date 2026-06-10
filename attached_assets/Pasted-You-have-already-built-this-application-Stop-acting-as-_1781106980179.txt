@@ -1,0 +1,238 @@
+You have already built this application.
+
+Stop acting as a website generator. From this point forward, act as a production software engineering team performing a final pre-launch audit before shipping to real users.
+
+Assume this application will be deployed publicly and used by real users with real data. Treat every issue as a production risk.
+
+Your task is not to defend existing implementation decisions.
+
+Your task is to challenge, audit, test, stress-test, validate, secure, and improve everything that has already been built.
+
+## Release Readiness Review
+
+First determine:
+
+* Is this application genuinely production-ready?
+* What would prevent deployment today?
+* What could fail under real-world usage?
+* What could damage user trust?
+* What could cause incorrect results?
+* What could cause security incidents?
+* What could create support tickets?
+* What could create financial loss?
+* What could create legal or compliance risks?
+* What features are incomplete, misleading, or unnecessary?
+
+Be brutally critical.
+
+Do not assume anything is correct simply because it works.
+
+## User Trust Audit
+
+Review the application from the perspective of a first-time user.
+
+Identify anything that appears:
+
+* AI-generated
+* unfinished
+* experimental
+* suspicious
+* low quality
+* inconsistent
+* misleading
+* unprofessional
+
+Remove or redesign anything that reduces trust.
+
+Specifically:
+
+* Remove any "Beta", "Early Access", "Testing", "Getting Started", or similar labels unless they are genuinely required.
+* Remove placeholder content.
+* Remove demo content.
+* Remove fake testimonials.
+* Remove fake statistics.
+* Remove AI-generated filler sections.
+* Remove anything that looks automatically generated.
+
+The final product should feel like a mature commercial application.
+
+## Product Completeness Audit
+
+Determine whether essential features are missing.
+
+Evaluate:
+
+* onboarding
+* user registration
+* authentication
+* password reset
+* account recovery
+* profile management
+* notifications
+* settings
+* data export
+* privacy controls
+* user feedback mechanisms
+* support options
+* error handling
+* analytics
+* logging
+* monitoring
+
+Identify gaps and recommend additions.
+
+## Security Audit
+
+Assume attackers will target the application immediately after launch.
+
+Review:
+
+* authentication
+* authorization
+* session management
+* API security
+* database security
+* input validation
+* output encoding
+* rate limiting
+* file uploads
+* secrets management
+* encryption
+* permissions
+* account takeover risks
+* privilege escalation risks
+* data leakage risks
+
+Attempt to identify and fix vulnerabilities.
+
+Do not stop at obvious issues.
+
+Actively search for edge cases and attack paths.
+
+## Data Integrity Audit
+
+Verify that:
+
+* calculations are correct
+* rewards are correct
+* balances are correct
+* displayed information is accurate
+* APIs return reliable data
+* data updates correctly
+* race conditions are handled
+* duplicate actions cannot corrupt data
+
+The application must not produce misleading or incorrect results.
+
+## Logic Audit
+
+Examine every workflow.
+
+Ask:
+
+* What happens if users click too fast?
+* What happens if requests fail?
+* What happens if users refresh?
+* What happens if data loads slowly?
+* What happens if users submit invalid inputs?
+* What happens if multiple actions occur simultaneously?
+* What happens if external services become unavailable?
+
+Find logical failures before users do.
+
+## Abuse Resistance Audit
+
+Attempt to abuse the system.
+
+Test for:
+
+* reward farming
+* duplicate rewards
+* referral abuse
+* automation abuse
+* spam
+* fake accounts
+* replay attacks
+* API abuse
+* workflow bypasses
+
+Identify all abuse opportunities and implement protections.
+
+## Performance Audit
+
+Evaluate:
+
+* page speed
+* database efficiency
+* API efficiency
+* caching
+* bundle size
+* memory usage
+* network requests
+
+Remove bottlenecks.
+
+## Accessibility Audit
+
+Ensure:
+
+* keyboard navigation works
+* screen readers work
+* proper semantic structure exists
+* sufficient contrast exists
+* forms are accessible
+* error messages are understandable
+
+## Quality Assurance Audit
+
+Perform exhaustive testing.
+
+Test:
+
+* every page
+* every button
+* every form
+* every workflow
+* every API
+* every edge case
+* every error state
+* every loading state
+* every empty state
+
+Do not assume a feature works because the happy path works.
+
+## Maintainability Audit
+
+Review the codebase.
+
+Remove:
+
+* dead code
+* duplicate code
+* unused dependencies
+* temporary fixes
+* debugging artifacts
+* abandoned features
+
+Improve:
+
+* architecture
+* readability
+* consistency
+* scalability
+
+## Final Output
+
+Produce:
+
+1. Production readiness score (0-100).
+2. Critical blockers that must be fixed before launch.
+3. High-priority improvements.
+4. Security findings.
+5. Logic findings.
+6. Missing features.
+7. Trust and credibility issues.
+8. Recommended fixes.
+9. Final go/no-go deployment recommendation.
+
+Do not approve deployment until all critical issues have been identified and addressed.

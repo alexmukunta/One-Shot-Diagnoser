@@ -129,11 +129,6 @@ export default function LandingPage() {
         />
 
         <div className="relative z-10 max-w-3xl mx-auto px-6 py-36 sm:py-44 text-center">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 rounded-full px-3 py-1 text-xs font-medium mb-8">
-            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-            Beta · Free while we're getting started
-          </div>
-
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
             Know when your{" "}
             <span className="text-primary">services go down</span>
@@ -173,22 +168,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Stats strip ─── */}
-      <div className="border-y border-border/60 bg-card/40">
-        <div className="max-w-4xl mx-auto px-6 py-8 grid grid-cols-3 gap-6 text-center">
-          {[
-            { value: "60s",   label: "Minimum check interval" },
-            { value: "< 30s", label: "Mean detection time" },
-            { value: "99.9%", label: "Checker infrastructure uptime" },
-          ].map(({ value, label }) => (
-            <div key={label}>
-              <div className="text-2xl font-bold text-primary mb-1">{value}</div>
-              <div className="text-xs text-muted-foreground">{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ─── CTA ─── */}
       <section className="border-t border-border/60 bg-card/20">
         <div className="max-w-3xl mx-auto px-6 py-20">
@@ -202,7 +181,7 @@ export default function LandingPage() {
             </p>
             <ul className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 mb-7">
               {[
-                "50 monitors free",
+                "No credit card required",
                 "1-minute checks",
                 "Slack, Discord & email alerts",
                 "SSL monitoring",

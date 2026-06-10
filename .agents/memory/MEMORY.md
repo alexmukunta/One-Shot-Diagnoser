@@ -1,0 +1,1 @@
+- [Production audit fixes](audit-fixes.md) — key decisions made during the pre-launch audit pass (sql.raw, degraded status, IDOR, N+1)
