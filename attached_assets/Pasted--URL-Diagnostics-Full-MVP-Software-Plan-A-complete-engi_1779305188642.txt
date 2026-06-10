@@ -1,0 +1,1499 @@
+# URL Diagnostics — Full MVP Software Plan
+
+> A complete engineering blueprint covering every feature, system design, data models, API contracts, and implementation notes. Follow this top-to-bottom to build a production-grade uptime monitoring product.
+
+---
+
+## Table of Contents
+
+1. [System Architecture Overview](#1-system-architecture-overview)
+2. [Tech Stack Decisions](#2-tech-stack-decisions)
+3. [Database Schema](#3-database-schema)
+4. [Authentication & User Accounts](#4-authentication--user-accounts)
+5. [Core Monitoring Engine](#5-core-monitoring-engine)
+6. [One-Shot Diagnostics (Existing Feature — Upgraded)](#6-one-shot-diagnostics-existing-feature--upgraded)
+7. [Scheduled Monitoring](#7-scheduled-monitoring)
+8. [Uptime History & SLA Tracking](#8-uptime-history--sla-tracking)
+9. [Incident Management](#9-incident-management)
+10. [Alerting System](#10-alerting-system)
+11. [Public Status Pages](#11-public-status-pages)
+12. [Dashboard & Multi-Site Management](#12-dashboard--multi-site-management)
+13. [Response Time Graphs & Charts](#13-response-time-graphs--charts)
+14. [Deep Diagnostics Engine](#14-deep-diagnostics-engine)
+15. [SSL Certificate Checker](#15-ssl-certificate-checker)
+16. [DNS Lookup & Propagation Checker](#16-dns-lookup--propagation-checker)
+17. [Multi-Region Checks](#17-multi-region-checks)
+18. [HTTP Header & Redirect Chain Inspector](#18-http-header--redirect-chain-inspector)
+19. [Performance Scoring](#19-performance-scoring)
+20. [Export System (PDF & CSV)](#20-export-system-pdf--csv)
+21. [Tagging & Grouping](#21-tagging--grouping)
+22. [Monetization & Tiered Plans](#22-monetization--tiered-plans)
+23. [API (Public Developer API)](#23-api-public-developer-api)
+24. [Frontend Architecture](#24-frontend-architecture)
+25. [Background Job System](#25-background-job-system)
+26. [Security Hardening](#26-security-hardening)
+27. [DevOps & Deployment](#27-devops--deployment)
+28. [MVP Build Order & Milestones](#28-mvp-build-order--milestones)
+
+---
+
+## 1. System Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        CLIENT LAYER                         │
+│         React SPA  ←→  Public Status Page (SSR/SSG)         │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ HTTPS / WebSocket
+┌──────────────────────▼──────────────────────────────────────┐
+│                      API GATEWAY (Express/Fastify)           │
+│   REST API  |  Auth Middleware  |  Rate Limiting  |  Webhooks│
+└────┬───────────────────┬────────────────────────────────────┘
+     │                   │
+┌────▼──────┐    ┌───────▼──────────────────────────────────┐
+│  Postgres  │    │          Background Job Scheduler         │
+│  (primary  │    │  (BullMQ / node-cron)                    │
+│   store)   │    │  ┌────────────┐  ┌───────────────────┐   │
+└────┬───────┘    │  │ Monitor    │  │ Alert Dispatcher  │   │
+     │            │  │ Worker     │  │ (Email/SMS/Slack)  │   │
+┌────▼───────┐    │  └────────────┘  └───────────────────┘   │
+│   Redis    │    │  ┌────────────┐  ┌───────────────────┐   │
+│  (cache +  │    │  │ SSL Cert   │  │ DNS Checker       │   │
+│  job queue)│    │  │ Checker    │  │ Worker            │   │
+└────────────┘    │  └────────────┘  └───────────────────┘   │
+                  └─────────────────────────────────────────-─┘
+                                   │
+              ┌────────────────────▼────────────────────────┐
+              │          External Check Agents               │
+              │  Region: US-East | EU-West | AP-Southeast    │
+              │  (Separate lightweight Node.js services)     │
+              └─────────────────────────────────────────────┘
+```
+
+**Key design decisions:**
+- Monorepo: one repo with `apps/api`, `apps/worker`, `apps/web`, `apps/status-page`
+- API and Worker are separate Node.js processes sharing the same DB + Redis
+- Status pages are server-side rendered for SEO and speed
+- Multi-region agents are separate deployable microservices (can start with just one region)
+
+---
+
+## 2. Tech Stack Decisions
+
+| Layer | Choice | Reason |
+|---|---|---|
+| Backend API | Node.js + Fastify | Fast, TypeScript-native, great plugin ecosystem |
+| Frontend | React + Vite + TailwindCSS | Fast dev cycle, familiar, great charting libraries |
+| Status Page | Next.js (App Router) | SSR/SSG for SEO, fast public pages |
+| Database | PostgreSQL | Relational, JSONB for flexible diagnostics data |
+| Cache / Queue | Redis + BullMQ | Reliable job queues, pub/sub for real-time |
+| Auth | Lucia Auth or Auth.js | Session-based auth, no JWT complexity for MVP |
+| Email | Resend (or Nodemailer + SES) | Simple API, good deliverability |
+| SMS | Twilio | Industry standard |
+| Payments | Stripe | Subscriptions + webhooks |
+| Charts | Recharts or Chart.js | Lightweight, React-friendly |
+| ORM | Drizzle ORM | Type-safe, fast, works great with Postgres |
+| Deployment | Railway or Render (current) → Docker | Managed, easy to scale |
+| Regions | Fly.io edge agents | Globally distributed, cheap |
+
+---
+
+## 3. Database Schema
+
+### users
+```sql
+CREATE TABLE users (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email         TEXT UNIQUE NOT NULL,
+  password_hash TEXT,
+  name          TEXT,
+  plan          TEXT NOT NULL DEFAULT 'free',  -- 'free' | 'pro' | 'enterprise'
+  stripe_customer_id TEXT,
+  email_verified BOOLEAN DEFAULT FALSE,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### sessions
+```sql
+CREATE TABLE sessions (
+  id         TEXT PRIMARY KEY,
+  user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ NOT NULL
+);
+```
+
+### monitors
+```sql
+CREATE TABLE monitors (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           UUID REFERENCES users(id) ON DELETE CASCADE,
+  name              TEXT NOT NULL,
+  url               TEXT NOT NULL,
+  method            TEXT DEFAULT 'GET',          -- GET | POST | HEAD
+  interval_seconds  INTEGER DEFAULT 300,         -- 60 | 300 | 900 | 1800
+  timeout_seconds   INTEGER DEFAULT 30,
+  expected_status   INTEGER DEFAULT 200,
+  keyword_assert    TEXT,                        -- optional: must contain this string
+  regions           TEXT[] DEFAULT '{"us-east"}',
+  is_active         BOOLEAN DEFAULT TRUE,
+  notify_on_down    BOOLEAN DEFAULT TRUE,
+  notify_on_recovery BOOLEAN DEFAULT TRUE,
+  last_checked_at   TIMESTAMPTZ,
+  last_status       TEXT,                        -- 'up' | 'down' | 'degraded'
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### monitor_checks
+```sql
+CREATE TABLE monitor_checks (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  monitor_id      UUID REFERENCES monitors(id) ON DELETE CASCADE,
+  region          TEXT NOT NULL,
+  status          TEXT NOT NULL,         -- 'up' | 'down' | 'timeout' | 'error'
+  http_status     INTEGER,
+  response_time_ms INTEGER,
+  error_message   TEXT,
+  response_headers JSONB,
+  checked_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_monitor_checks_monitor_id ON monitor_checks(monitor_id);
+CREATE INDEX idx_monitor_checks_checked_at ON monitor_checks(checked_at DESC);
+```
+
+### incidents
+```sql
+CREATE TABLE incidents (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  monitor_id      UUID REFERENCES monitors(id) ON DELETE CASCADE,
+  started_at      TIMESTAMPTZ NOT NULL,
+  resolved_at     TIMESTAMPTZ,
+  duration_seconds INTEGER,
+  root_cause      TEXT,                  -- 'timeout' | 'http_error' | 'dns' | 'ssl'
+  affected_regions TEXT[],
+  is_acknowledged  BOOLEAN DEFAULT FALSE,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### alert_channels
+```sql
+CREATE TABLE alert_channels (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
+  type        TEXT NOT NULL,             -- 'email' | 'sms' | 'slack' | 'discord' | 'webhook'
+  name        TEXT NOT NULL,
+  config      JSONB NOT NULL,            -- { email }, { phone }, { slack_webhook_url }, etc.
+  is_verified BOOLEAN DEFAULT FALSE,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### monitor_alert_channels (join table)
+```sql
+CREATE TABLE monitor_alert_channels (
+  monitor_id        UUID REFERENCES monitors(id) ON DELETE CASCADE,
+  alert_channel_id  UUID REFERENCES alert_channels(id) ON DELETE CASCADE,
+  PRIMARY KEY (monitor_id, alert_channel_id)
+);
+```
+
+### alert_logs
+```sql
+CREATE TABLE alert_logs (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  incident_id      UUID REFERENCES incidents(id) ON DELETE CASCADE,
+  alert_channel_id UUID REFERENCES alert_channels(id),
+  type             TEXT,                 -- 'down' | 'recovery'
+  sent_at          TIMESTAMPTZ DEFAULT NOW(),
+  success          BOOLEAN,
+  error_message    TEXT
+);
+```
+
+### ssl_checks
+```sql
+CREATE TABLE ssl_checks (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  monitor_id     UUID REFERENCES monitors(id) ON DELETE CASCADE,
+  domain         TEXT NOT NULL,
+  valid          BOOLEAN,
+  issuer         TEXT,
+  expires_at     TIMESTAMPTZ,
+  days_remaining INTEGER,
+  checked_at     TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### dns_checks
+```sql
+CREATE TABLE dns_checks (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  monitor_id  UUID REFERENCES monitors(id) ON DELETE CASCADE,
+  domain      TEXT NOT NULL,
+  record_type TEXT,                     -- 'A' | 'CNAME' | 'MX' | 'NS' | 'TXT'
+  records     JSONB,
+  ttl         INTEGER,
+  checked_at  TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### status_pages
+```sql
+CREATE TABLE status_pages (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
+  slug        TEXT UNIQUE NOT NULL,     -- used in: status.yourdomain.com/{slug}
+  title       TEXT NOT NULL,
+  description TEXT,
+  logo_url    TEXT,
+  custom_domain TEXT,
+  is_public   BOOLEAN DEFAULT TRUE,
+  monitors    UUID[],                   -- ordered list of monitor IDs to show
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### tags
+```sql
+CREATE TABLE tags (
+  id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id  UUID REFERENCES users(id) ON DELETE CASCADE,
+  name     TEXT NOT NULL,
+  color    TEXT DEFAULT '#6366f1'
+);
+
+CREATE TABLE monitor_tags (
+  monitor_id UUID REFERENCES monitors(id) ON DELETE CASCADE,
+  tag_id     UUID REFERENCES tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (monitor_id, tag_id)
+);
+```
+
+### one_shot_results (for non-logged-in / ad-hoc checks)
+```sql
+CREATE TABLE one_shot_results (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  url         TEXT NOT NULL,
+  result      JSONB NOT NULL,
+  ip_hash     TEXT,                     -- hashed for rate limiting, not stored raw
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+## 4. Authentication & User Accounts
+
+### Endpoints
+
+```
+POST /api/auth/register          — email + password signup
+POST /api/auth/login             — returns session cookie
+POST /api/auth/logout            — clears session
+GET  /api/auth/me                — returns current user
+POST /api/auth/forgot-password   — sends reset email
+POST /api/auth/reset-password    — consumes token, sets new password
+POST /api/auth/verify-email      — consumes email verification token
+```
+
+### Implementation Notes
+
+- Use **bcrypt** (cost factor 12) for password hashing
+- Sessions stored in Postgres `sessions` table, session ID in HttpOnly cookie
+- Email verification: generate a secure random token, store hashed in DB, send link via email
+- Password reset: same pattern, token expires in 1 hour
+- Rate limit login endpoint: 10 attempts per 15 minutes per IP
+- On register: send welcome email, send verification email
+- OAuth (Google / GitHub) — add in Phase 2, not MVP blocker
+
+### User Profile Endpoints
+
+```
+GET    /api/user/profile       — get name, email, plan
+PUT    /api/user/profile       — update name
+PUT    /api/user/password      — change password (requires current password)
+DELETE /api/user/account       — delete account + all data (GDPR)
+```
+
+---
+
+## 5. Core Monitoring Engine
+
+This is the heart of the product. A worker process continuously processes a job queue.
+
+### How a Monitor Check Works (Step by Step)
+
+1. Scheduler enqueues a job for every active monitor based on its `interval_seconds`
+2. Worker picks up job, calls the target URL using `undici` (Node.js HTTP client, faster than axios)
+3. Measures response time from request start to first byte received
+4. Validates: HTTP status code matches `expected_status`
+5. Validates: body contains `keyword_assert` string (if set)
+6. Records result in `monitor_checks` table
+7. Compares result with previous status:
+   - If `up → down`: create incident, enqueue alert job
+   - If `down → up`: resolve incident, enqueue recovery alert job
+8. Updates `monitors.last_status` and `monitors.last_checked_at`
+
+### Check Result Object (stored in monitor_checks)
+
+```json
+{
+  "status": "up",
+  "http_status": 200,
+  "response_time_ms": 243,
+  "region": "us-east",
+  "error_message": null,
+  "response_headers": {
+    "content-type": "text/html",
+    "server": "nginx",
+    "x-cache": "HIT"
+  },
+  "checked_at": "2025-01-01T12:00:00Z"
+}
+```
+
+### Failure Conditions
+
+| Condition | Status | Notes |
+|---|---|---|
+| HTTP status != expected | `down` | e.g. expected 200, got 503 |
+| Connection refused | `down` | TCP-level failure |
+| DNS resolution failed | `down` | Record `root_cause: 'dns'` |
+| Timeout exceeded | `timeout` | Treat as `down` |
+| SSL handshake failed | `down` | Record `root_cause: 'ssl'` |
+| Keyword not in body | `down` | Record `root_cause: 'keyword'` |
+| Response > 2s but OK | `degraded` | Optional threshold setting |
+
+### Confirmation Checks (Avoid False Positives)
+
+Before triggering a `down` incident, run 2 consecutive failing checks with a 30-second gap. Only create incident if both fail. This prevents false alarms from transient network blips.
+
+---
+
+## 6. One-Shot Diagnostics (Existing Feature — Upgraded)
+
+The current feature: enter a URL, get a snapshot. Upgrade it significantly.
+
+### New Endpoint
+
+```
+POST /api/diagnose
+Body: { url: string, regions?: string[] }
+```
+
+### Response Structure
+
+```json
+{
+  "url": "https://example.com",
+  "checked_at": "2025-01-01T12:00:00Z",
+  "availability": {
+    "status": "up",
+    "http_status": 200,
+    "response_time_ms": 312,
+    "redirects": [
+      { "from": "http://example.com", "to": "https://example.com", "status": 301 }
+    ]
+  },
+  "ssl": {
+    "valid": true,
+    "issuer": "Let's Encrypt",
+    "expires_at": "2025-06-01T00:00:00Z",
+    "days_remaining": 152,
+    "protocol": "TLSv1.3",
+    "cipher": "TLS_AES_256_GCM_SHA384"
+  },
+  "dns": {
+    "resolved": true,
+    "ip_address": "93.184.216.34",
+    "a_records": ["93.184.216.34"],
+    "ttl": 3600
+  },
+  "headers": {
+    "server": "ECS (nyb/1D2E)",
+    "content-type": "text/html; charset=UTF-8",
+    "x-cache": "HIT",
+    "cache-control": "max-age=604800",
+    "strict-transport-security": "max-age=31536000",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  },
+  "performance": {
+    "score": 87,
+    "grade": "A",
+    "ttfb_ms": 180,
+    "response_size_kb": 14.2,
+    "compression": "gzip"
+  },
+  "security": {
+    "hsts": true,
+    "x_frame_options": true,
+    "csp": false,
+    "x_content_type": true,
+    "score": 75
+  },
+  "regions": {
+    "us-east": { "status": "up", "response_time_ms": 312 },
+    "eu-west": { "status": "up", "response_time_ms": 198 },
+    "ap-southeast": { "status": "up", "response_time_ms": 451 }
+  }
+}
+```
+
+### Rate Limiting for Anonymous Users
+- 10 one-shot checks per IP per hour
+- Store hashed IP + timestamp in Redis with TTL
+- Logged-in users: 100 per hour (free), unlimited (pro)
+
+---
+
+## 7. Scheduled Monitoring
+
+### Monitor CRUD Endpoints
+
+```
+GET    /api/monitors              — list all monitors for user
+POST   /api/monitors              — create monitor
+GET    /api/monitors/:id          — get single monitor
+PUT    /api/monitors/:id          — update monitor
+DELETE /api/monitors/:id          — delete monitor
+POST   /api/monitors/:id/pause    — pause monitoring
+POST   /api/monitors/:id/resume   — resume monitoring
+POST   /api/monitors/:id/check    — trigger manual check immediately
+```
+
+### Plan Limits (enforced on POST /api/monitors)
+
+| Plan | Max Monitors | Min Interval |
+|---|---|---|
+| Free | 3 | 5 minutes |
+| Pro | 50 | 1 minute |
+| Enterprise | Unlimited | 30 seconds |
+
+### Scheduler Logic (BullMQ)
+
+```javascript
+// On monitor creation or interval change, schedule repeating job
+await monitorQueue.add(
+  'check-monitor',
+  { monitorId: monitor.id },
+  {
+    repeat: { every: monitor.interval_seconds * 1000 },
+    jobId: `monitor-${monitor.id}`,  // idempotent — prevents duplicates
+  }
+);
+
+// On pause/delete, remove the repeat
+await monitorQueue.removeRepeatable('check-monitor', {
+  every: monitor.interval_seconds * 1000,
+  jobId: `monitor-${monitor.id}`,
+});
+```
+
+---
+
+## 8. Uptime History & SLA Tracking
+
+### Endpoints
+
+```
+GET /api/monitors/:id/uptime?period=24h   — uptime % for last 24h
+GET /api/monitors/:id/uptime?period=7d    — uptime % for last 7 days
+GET /api/monitors/:id/uptime?period=30d   — uptime % for last 30 days
+GET /api/monitors/:id/uptime?period=90d   — uptime % for last 90 days
+```
+
+### Uptime Calculation
+
+```javascript
+// Query total checks and successful checks in the period
+const result = await db.query(`
+  SELECT
+    COUNT(*) as total_checks,
+    COUNT(*) FILTER (WHERE status = 'up') as up_checks,
+    AVG(response_time_ms) as avg_response_time,
+    MIN(response_time_ms) as min_response_time,
+    MAX(response_time_ms) as max_response_time,
+    PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY response_time_ms) as p95_response_time
+  FROM monitor_checks
+  WHERE monitor_id = $1 AND checked_at > NOW() - INTERVAL $2
+`, [monitorId, period]);
+
+const uptimePercent = (result.up_checks / result.total_checks) * 100;
+```
+
+### Response
+
+```json
+{
+  "period": "30d",
+  "uptime_percent": 99.87,
+  "total_checks": 8640,
+  "down_checks": 11,
+  "avg_response_time_ms": 287,
+  "p95_response_time_ms": 512,
+  "incidents_count": 2,
+  "total_downtime_minutes": 23
+}
+```
+
+### Data Retention Policy
+
+- Raw check data retained for:
+  - Free plan: 7 days
+  - Pro plan: 90 days
+  - Enterprise: 1 year
+- Aggregate hourly summaries retained forever (for uptime % calculation)
+- Run a daily cleanup cron job to prune old raw checks
+
+---
+
+## 9. Incident Management
+
+### Endpoints
+
+```
+GET  /api/incidents                    — list all incidents (paginated)
+GET  /api/incidents/:id                — get incident detail
+GET  /api/monitors/:id/incidents       — incidents for specific monitor
+POST /api/incidents/:id/acknowledge    — mark as acknowledged
+```
+
+### Incident Lifecycle
+
+```
+Check fails (1st time)
+       ↓
+Wait 30 seconds
+       ↓
+Check again (confirmation check)
+       ↓
+Still failing?
+  YES → Create incident, set started_at, set monitor.last_status = 'down'
+  NO  → Ignore (transient blip)
+       ↓
+Check succeeds
+       ↓
+Resolve incident: set resolved_at, calculate duration_seconds
+Update monitor.last_status = 'up'
+Enqueue recovery alert
+```
+
+### Incident Detail Response
+
+```json
+{
+  "id": "uuid",
+  "monitor": { "id": "uuid", "name": "My API", "url": "https://api.example.com" },
+  "started_at": "2025-01-01T10:00:00Z",
+  "resolved_at": "2025-01-01T10:23:00Z",
+  "duration_seconds": 1380,
+  "duration_human": "23 minutes",
+  "root_cause": "timeout",
+  "affected_regions": ["us-east", "eu-west"],
+  "is_acknowledged": false,
+  "timeline": [
+    { "at": "2025-01-01T10:00:00Z", "event": "DOWN detected in us-east" },
+    { "at": "2025-01-01T10:00:30Z", "event": "Confirmation check failed — incident created" },
+    { "at": "2025-01-01T10:01:00Z", "event": "Alert sent via email to john@example.com" },
+    { "at": "2025-01-01T10:23:00Z", "event": "Monitor recovered — incident resolved" }
+  ]
+}
+```
+
+---
+
+## 10. Alerting System
+
+### Alert Channel Types
+
+| Type | Config Fields | Notes |
+|---|---|---|
+| Email | `{ email }` | Verify by sending test email |
+| SMS | `{ phone }` | Verify by sending test SMS (Twilio) |
+| Slack | `{ webhook_url, channel }` | Slack Incoming Webhooks |
+| Discord | `{ webhook_url }` | Discord Webhooks |
+| Custom Webhook | `{ url, secret, headers }` | POST JSON payload to any URL |
+
+### Alert Channel Endpoints
+
+```
+GET    /api/alert-channels            — list channels
+POST   /api/alert-channels            — create channel
+PUT    /api/alert-channels/:id        — update channel
+DELETE /api/alert-channels/:id        — delete channel
+POST   /api/alert-channels/:id/test   — send test alert
+```
+
+### Alert Payload (Webhook & Slack)
+
+```json
+{
+  "event": "monitor.down",
+  "monitor": {
+    "id": "uuid",
+    "name": "Production API",
+    "url": "https://api.example.com"
+  },
+  "incident": {
+    "id": "uuid",
+    "started_at": "2025-01-01T10:00:00Z",
+    "root_cause": "timeout"
+  },
+  "regions_affected": ["us-east"],
+  "dashboard_url": "https://app.uptimechecker.io/monitors/uuid"
+}
+```
+
+### Alert Rules
+
+- Alert immediately on `down` (after confirmation check)
+- Send recovery alert when monitor comes back `up`
+- **Do not re-alert** during ongoing incident (no spam)
+- Optional: **escalation** — if incident not acknowledged in X minutes, send to secondary channel
+- Respect quiet hours (user-defined time window to suppress alerts) — Phase 2
+
+### Alert Dispatcher (Worker Job)
+
+```javascript
+async function dispatchAlert(incidentId, type) {
+  const incident = await getIncidentWithMonitor(incidentId);
+  const channels = await getAlertChannelsForMonitor(incident.monitor_id);
+
+  for (const channel of channels) {
+    try {
+      await sendAlert(channel, incident, type);  // type: 'down' | 'recovery'
+      await logAlert(incidentId, channel.id, type, true);
+    } catch (err) {
+      await logAlert(incidentId, channel.id, type, false, err.message);
+      // Retry failed alerts up to 3 times with exponential backoff
+    }
+  }
+}
+```
+
+### Alert Thresholds (Advanced)
+
+Allow users to define custom threshold rules:
+- Alert if response time > Xms for Y consecutive checks
+- Alert if uptime drops below X% in any 1-hour window
+
+---
+
+## 11. Public Status Pages
+
+### How It Works
+
+Every user can create a status page with a unique slug: `yourdomain.com/status/{slug}`
+
+The status page shows:
+- Overall system status (All Systems Operational / Degraded / Outage)
+- Per-monitor status with last 90 days uptime bar (colored blocks per day)
+- Current active incidents
+- Incident history
+
+### Status Page Endpoints
+
+```
+GET    /api/status-pages              — list user's status pages
+POST   /api/status-pages              — create status page
+PUT    /api/status-pages/:id          — update (reorder monitors, change title)
+DELETE /api/status-pages/:id          — delete status page
+GET    /api/public/status/:slug       — public endpoint (no auth) for rendering
+```
+
+### Public Endpoint Response
+
+```json
+{
+  "title": "Acme Corp Status",
+  "description": "Real-time status of all Acme services",
+  "overall_status": "operational",
+  "monitors": [
+    {
+      "name": "API",
+      "status": "up",
+      "uptime_90d": 99.95,
+      "daily_bars": [
+        { "date": "2025-01-01", "status": "up", "uptime": 100 },
+        { "date": "2024-12-31", "status": "degraded", "uptime": 98.2 }
+      ]
+    }
+  ],
+  "active_incidents": [],
+  "recent_incidents": [
+    {
+      "title": "API Degradation",
+      "started_at": "2024-12-31T08:00:00Z",
+      "resolved_at": "2024-12-31T08:27:00Z",
+      "status": "resolved"
+    }
+  ]
+}
+```
+
+### Custom Domain Support (Phase 2)
+
+Allow users to point a CNAME to `status.yourtool.com`. Use a reverse proxy lookup by the `Host` header to find the matching `status_pages.custom_domain` record.
+
+---
+
+## 12. Dashboard & Multi-Site Management
+
+### Dashboard Endpoint
+
+```
+GET /api/dashboard
+```
+
+Returns a summary of all monitors for the current user:
+
+```json
+{
+  "summary": {
+    "total": 12,
+    "up": 10,
+    "down": 1,
+    "paused": 1
+  },
+  "monitors": [
+    {
+      "id": "uuid",
+      "name": "Production API",
+      "url": "https://api.example.com",
+      "status": "up",
+      "uptime_24h": 100,
+      "uptime_7d": 99.8,
+      "last_response_time_ms": 243,
+      "last_checked_at": "2025-01-01T12:00:00Z",
+      "tags": [{ "id": "uuid", "name": "production", "color": "#10b981" }]
+    }
+  ]
+}
+```
+
+### Real-Time Updates via WebSocket / SSE
+
+Use Server-Sent Events (SSE) for live dashboard updates:
+
+```
+GET /api/stream/dashboard   — SSE stream, emits monitor status changes
+```
+
+When a monitor check completes, push the updated status to all connected clients for that user. Use Redis pub/sub to fan out across multiple API server instances.
+
+---
+
+## 13. Response Time Graphs & Charts
+
+### Endpoint
+
+```
+GET /api/monitors/:id/timeseries?period=24h&granularity=5m
+```
+
+Parameters:
+- `period`: `1h` | `24h` | `7d` | `30d`
+- `granularity`: `1m` | `5m` | `1h` | `1d`
+
+### Response
+
+```json
+{
+  "monitor_id": "uuid",
+  "period": "24h",
+  "granularity": "5m",
+  "series": [
+    { "timestamp": "2025-01-01T00:00:00Z", "response_time_ms": 243, "status": "up" },
+    { "timestamp": "2025-01-01T00:05:00Z", "response_time_ms": 189, "status": "up" },
+    { "timestamp": "2025-01-01T00:10:00Z", "response_time_ms": null, "status": "down" }
+  ]
+}
+```
+
+### Database Query Strategy
+
+Use `time_bucket` aggregation (if using TimescaleDB extension) or Postgres `date_trunc`:
+
+```sql
+SELECT
+  date_trunc('hour', checked_at) as bucket,
+  AVG(response_time_ms) as avg_ms,
+  MIN(response_time_ms) as min_ms,
+  MAX(response_time_ms) as max_ms,
+  MODE() WITHIN GROUP (ORDER BY status) as status
+FROM monitor_checks
+WHERE monitor_id = $1 AND checked_at > NOW() - INTERVAL '24 hours'
+GROUP BY bucket
+ORDER BY bucket ASC;
+```
+
+### Frontend Chart
+
+Use **Recharts** `AreaChart` or `LineChart`. Mark downtime periods in red. Add tooltip showing exact values on hover. Add reference line for average response time.
+
+---
+
+## 14. Deep Diagnostics Engine
+
+The enhanced one-shot check runs all of these checks in parallel (Promise.all):
+
+### Checks Run in Parallel
+
+```javascript
+const [
+  httpResult,
+  sslResult,
+  dnsResult,
+  redirectChain,
+  headerAnalysis,
+  performanceScore,
+] = await Promise.all([
+  checkHttp(url),
+  checkSsl(hostname),
+  checkDns(hostname),
+  followRedirects(url),
+  analyzeHeaders(url),
+  scorePerformance(url),
+]);
+```
+
+Each check has a 15-second timeout and fails gracefully without blocking others.
+
+---
+
+## 15. SSL Certificate Checker
+
+### Implementation
+
+Use Node.js `tls.connect()` to establish a TLS connection and inspect the peer certificate.
+
+```javascript
+import tls from 'tls';
+
+function checkSSL(hostname, port = 443) {
+  return new Promise((resolve, reject) => {
+    const socket = tls.connect({ host: hostname, port, servername: hostname }, () => {
+      const cert = socket.getPeerCertificate(true);
+      const expiresAt = new Date(cert.valid_to);
+      const daysRemaining = Math.floor((expiresAt - Date.now()) / 86400000);
+      resolve({
+        valid: socket.authorized,
+        issuer: cert.issuer?.O,
+        subject: cert.subject?.CN,
+        expires_at: expiresAt.toISOString(),
+        days_remaining: daysRemaining,
+        protocol: socket.getProtocol(),       // TLSv1.3
+        cipher: socket.getCipher()?.name,
+        san: cert.subjectaltname,
+        is_wildcard: cert.subject?.CN?.startsWith('*'),
+      });
+      socket.destroy();
+    });
+    socket.on('error', reject);
+    socket.setTimeout(10000, () => reject(new Error('SSL timeout')));
+  });
+}
+```
+
+### SSL Alert Rules (Scheduled Job)
+
+Run SSL checks daily for all active monitors. Alert when `days_remaining` is:
+- 30 days (first warning)
+- 14 days (second warning)
+- 7 days (urgent)
+- Expired (critical)
+
+---
+
+## 16. DNS Lookup & Propagation Checker
+
+### Implementation
+
+Use the `dns` module (built-in Node.js) plus multiple DNS resolvers for propagation:
+
+```javascript
+import dns from 'dns/promises';
+
+// Check A, CNAME, MX, NS, TXT records
+async function checkDns(hostname) {
+  const [a, mx, ns, txt] = await Promise.allSettled([
+    dns.resolve4(hostname),
+    dns.resolveMx(hostname),
+    dns.resolveNs(hostname),
+    dns.resolveTxt(hostname),
+  ]);
+
+  return {
+    a_records: a.status === 'fulfilled' ? a.value : [],
+    mx_records: mx.status === 'fulfilled' ? mx.value : [],
+    ns_records: ns.status === 'fulfilled' ? ns.value : [],
+    txt_records: txt.status === 'fulfilled' ? txt.value : [],
+  };
+}
+
+// Propagation: query multiple public resolvers
+const resolvers = [
+  '8.8.8.8',         // Google
+  '1.1.1.1',         // Cloudflare
+  '208.67.222.222',  // OpenDNS
+  '9.9.9.9',         // Quad9
+];
+
+async function checkPropagation(hostname) {
+  return Promise.all(resolvers.map(async (resolver) => {
+    const r = new dns.Resolver();
+    r.setServers([resolver]);
+    const records = await r.resolve4(hostname).catch(() => []);
+    return { resolver, records };
+  }));
+}
+```
+
+---
+
+## 17. Multi-Region Checks
+
+### Architecture
+
+Deploy lightweight check agents as separate Node.js services in multiple regions. Each agent:
+1. Listens for HTTP requests from the main API
+2. Performs the HTTP check from its local network
+3. Returns the result
+
+### Regions (Start with these)
+
+| Region ID | Location | Provider |
+|---|---|---|
+| `us-east` | Virginia, USA | Fly.io / Render |
+| `eu-west` | Frankfurt, Germany | Fly.io |
+| `ap-southeast` | Singapore | Fly.io |
+
+### Agent API (Internal, Not Public)
+
+```
+POST /check
+Body: { url, method, timeout, expected_status, keyword }
+Response: { status, http_status, response_time_ms, error_message }
+```
+
+Secure agent endpoints with a shared secret header (`X-Agent-Secret`).
+
+### Main API — Dispatching Multi-Region Checks
+
+```javascript
+async function checkAllRegions(monitor) {
+  const agents = getAgentsForMonitor(monitor); // based on monitor.regions
+  const results = await Promise.allSettled(
+    agents.map(agent => agent.check(monitor))
+  );
+  return results.map((r, i) => ({
+    region: agents[i].region,
+    ...(r.status === 'fulfilled' ? r.value : { status: 'error', error: r.reason.message })
+  }));
+}
+```
+
+### Consensus Logic
+
+- If majority of regions report `down` → incident created
+- If only 1 region reports `down` → mark as `degraded`, check again in 60s
+- This prevents false positives from regional network issues
+
+---
+
+## 18. HTTP Header & Redirect Chain Inspector
+
+### Redirect Chain
+
+```javascript
+async function followRedirects(url, maxRedirects = 10) {
+  const chain = [];
+  let current = url;
+
+  for (let i = 0; i < maxRedirects; i++) {
+    const response = await fetch(current, { redirect: 'manual' });
+    chain.push({
+      url: current,
+      status: response.status,
+      location: response.headers.get('location'),
+    });
+    if (![301, 302, 303, 307, 308].includes(response.status)) break;
+    current = new URL(response.headers.get('location'), current).href;
+  }
+
+  return chain;
+}
+```
+
+### Security Header Analysis
+
+Score security headers and flag missing ones:
+
+| Header | Required | What to Check |
+|---|---|---|
+| `Strict-Transport-Security` | Yes | `max-age` >= 31536000 |
+| `X-Frame-Options` | Yes | `DENY` or `SAMEORIGIN` |
+| `X-Content-Type-Options` | Yes | `nosniff` |
+| `Content-Security-Policy` | Recommended | Present and non-empty |
+| `Referrer-Policy` | Recommended | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | Optional | Present |
+
+---
+
+## 19. Performance Scoring
+
+### Score Calculation
+
+Compute a score out of 100 based on the following weighted metrics:
+
+| Metric | Weight | Good | Acceptable | Poor |
+|---|---|---|---|---|
+| Response time | 40% | < 300ms | < 800ms | > 2s |
+| TTFB | 20% | < 200ms | < 500ms | > 1s |
+| Response size | 15% | < 100KB | < 500KB | > 2MB |
+| Compression enabled | 10% | gzip/br | — | none |
+| Security headers | 15% | 5+ headers | 3-4 | < 3 |
+
+```javascript
+function scorePerformance(metrics) {
+  const responseScore = scoreMetric(metrics.response_time_ms, [300, 800, 2000]) * 40;
+  const ttfbScore = scoreMetric(metrics.ttfb_ms, [200, 500, 1000]) * 20;
+  const sizeScore = scoreMetric(metrics.response_size_bytes, [100000, 500000, 2000000]) * 15;
+  const compressionScore = metrics.compression ? 10 : 0;
+  const securityScore = (metrics.security_headers_count / 5) * 15;
+  const total = responseScore + ttfbScore + sizeScore + compressionScore + securityScore;
+  return {
+    score: Math.round(total),
+    grade: total >= 90 ? 'A' : total >= 75 ? 'B' : total >= 60 ? 'C' : 'D',
+  };
+}
+```
+
+---
+
+## 20. Export System (PDF & CSV)
+
+### Endpoints
+
+```
+GET /api/monitors/:id/export/csv?period=30d    — CSV of all checks
+GET /api/monitors/:id/export/pdf?period=30d    — PDF diagnostic report
+GET /api/monitors/export/csv                   — Export all monitors summary
+```
+
+### CSV Format
+
+```
+timestamp,status,response_time_ms,http_status,region,error_message
+2025-01-01T12:00:00Z,up,243,200,us-east,
+2025-01-01T12:05:00Z,down,,0,us-east,Connection timeout
+```
+
+Use Node.js `csv-stringify` library to generate CSV streams. Stream directly to the HTTP response — do not buffer the whole thing in memory.
+
+### PDF Report
+
+Use `pdfkit` or `puppeteer` to render a PDF report containing:
+- Monitor name, URL, period
+- Uptime % summary table
+- Response time chart (rendered as SVG → PDF)
+- Incident list with durations
+- SSL certificate status
+- Security header summary
+
+---
+
+## 21. Tagging & Grouping
+
+### Tag Endpoints
+
+```
+GET    /api/tags                   — list all tags
+POST   /api/tags                   — create tag { name, color }
+PUT    /api/tags/:id               — rename/recolor
+DELETE /api/tags/:id               — delete tag (removes from all monitors)
+POST   /api/monitors/:id/tags      — add tag(s) to monitor
+DELETE /api/monitors/:id/tags/:tagId — remove tag from monitor
+```
+
+### Filtering by Tag
+
+```
+GET /api/monitors?tag=production
+GET /api/monitors?tag=production,staging   — AND filter
+```
+
+### Dashboard Groups
+
+On the frontend, group monitors by tag into collapsible sections. Each group shows an aggregate status and uptime.
+
+---
+
+## 22. Monetization & Tiered Plans
+
+### Plans
+
+| Feature | Free | Pro ($19/mo) | Enterprise ($99/mo) |
+|---|---|---|---|
+| Monitors | 3 | 50 | Unlimited |
+| Check interval | 5 min | 1 min | 30 sec |
+| Data retention | 7 days | 90 days | 1 year |
+| Alert channels | 1 email | 10 (all types) | Unlimited |
+| Status pages | 1 | 5 | Unlimited |
+| Multi-region checks | — | 3 regions | All regions |
+| PDF/CSV export | — | ✓ | ✓ |
+| API access | — | ✓ | ✓ |
+| Custom domains | — | — | ✓ |
+| Team members | — | — | ✓ |
+
+### Stripe Integration
+
+```
+POST /api/billing/checkout     — create Stripe Checkout session
+POST /api/billing/portal       — create Stripe Customer Portal session
+POST /api/webhooks/stripe      — Stripe webhook (subscription events)
+GET  /api/billing/subscription — current subscription details
+```
+
+Webhook events to handle:
+- `checkout.session.completed` → activate plan, update `users.plan`
+- `customer.subscription.updated` → update plan
+- `customer.subscription.deleted` → downgrade to free, pause excess monitors
+- `invoice.payment_failed` → send dunning email, keep service for grace period (72h)
+
+### Plan Enforcement
+
+- On monitor creation: check `monitors count < plan.max_monitors`
+- On scheduler: check `monitor.interval_seconds >= plan.min_interval`
+- On alert channel creation: check channel count < plan limit
+- Middleware `requirePlan('pro')` decorator for gated endpoints
+
+---
+
+## 23. API (Public Developer API)
+
+### API Key Management
+
+```
+GET    /api/api-keys           — list keys
+POST   /api/api-keys           — create key (returns key once, then store hash)
+DELETE /api/api-keys/:id       — revoke key
+```
+
+Store: SHA-256 hash of key in DB, prefix the key with `up_` for identification.
+
+### API Key Auth Middleware
+
+```javascript
+async function apiKeyAuth(request, reply) {
+  const key = request.headers['x-api-key'];
+  if (!key) return reply.code(401).send({ error: 'API key required' });
+  const hash = crypto.createHash('sha256').update(key).digest('hex');
+  const apiKey = await db.query('SELECT user_id FROM api_keys WHERE key_hash = $1', [hash]);
+  if (!apiKey) return reply.code(401).send({ error: 'Invalid API key' });
+  request.userId = apiKey.user_id;
+}
+```
+
+### Public API Endpoints (Pro+ only)
+
+```
+GET  /v1/monitors
+GET  /v1/monitors/:id
+POST /v1/monitors
+GET  /v1/monitors/:id/uptime
+GET  /v1/monitors/:id/incidents
+GET  /v1/monitors/:id/checks?limit=100
+```
+
+Include rate limiting: 60 requests/min (Pro), 600/min (Enterprise).
+
+---
+
+## 24. Frontend Architecture
+
+### Routes / Pages
+
+```
+/                        — Landing page (hero, features, pricing, CTA)
+/login                   — Login form
+/register                — Register form
+/forgot-password         — Password reset request
+/dashboard               — Main dashboard (all monitors)
+/monitors/new            — Create monitor form
+/monitors/:id            — Monitor detail (charts, incidents, checks log)
+/monitors/:id/edit       — Edit monitor settings
+/status-pages            — Status page manager
+/status-pages/:id        — Edit status page
+/alerts                  — Alert channel management
+/settings                — Profile, password, billing
+/settings/billing        — Plan, invoices, upgrade/downgrade
+/settings/api-keys       — API key management
+/status/:slug            — Public status page (unauthenticated)
+```
+
+### Component Structure
+
+```
+src/
+  components/
+    monitors/
+      MonitorCard.tsx          — summary card for dashboard
+      MonitorStatusBadge.tsx   — colored up/down/paused badge
+      ResponseTimeChart.tsx    — area chart component
+      UptimeBar.tsx            — 90-day colored block timeline
+      IncidentTimeline.tsx     — incident event list
+    alerts/
+      AlertChannelForm.tsx
+      AlertChannelList.tsx
+    status-page/
+      StatusPageEditor.tsx
+      MonitorDragList.tsx      — drag to reorder monitors on status page
+    shared/
+      Spinner.tsx
+      Modal.tsx
+      Toast.tsx                — notification toasts
+      EmptyState.tsx
+  pages/
+    Dashboard.tsx
+    MonitorDetail.tsx
+    Settings.tsx
+    StatusPage.tsx             — public status page
+  hooks/
+    useMonitors.ts
+    useSSE.ts                  — Server-Sent Events hook
+  api/
+    client.ts                  — typed API client (fetch wrapper)
+```
+
+### State Management
+
+Use React Query (`@tanstack/react-query`) for all server state. No Redux needed. Use React Context only for auth state (current user).
+
+---
+
+## 25. Background Job System
+
+### Queue Structure (BullMQ)
+
+| Queue | Workers | Purpose |
+|---|---|---|
+| `monitor-checks` | 5-10 | Run HTTP checks |
+| `alerts` | 2-3 | Send email/SMS/Slack |
+| `ssl-checks` | 2 | Daily SSL certificate checks |
+| `dns-checks` | 2 | Periodic DNS record checks |
+| `cleanup` | 1 | Prune old check data |
+| `reports` | 1 | Generate PDF/CSV exports |
+
+### Monitor Check Worker
+
+```javascript
+monitorCheckQueue.process(async (job) => {
+  const { monitorId } = job.data;
+  const monitor = await getMonitor(monitorId);
+  if (!monitor.is_active) return; // skip paused monitors
+
+  const results = await checkAllRegions(monitor);
+  await saveCheckResults(monitor, results);
+  await evaluateIncident(monitor, results);
+  await updateMonitorStatus(monitor, results);
+});
+```
+
+### Retry Strategy
+
+- Failed jobs retry 3 times with exponential backoff: 30s, 2m, 10m
+- After 3 failures, move to dead-letter queue and alert admin
+- Alert dispatch jobs retry 5 times (more important to deliver)
+
+---
+
+## 26. Security Hardening
+
+### Input Validation
+
+- Use **Zod** for all request body validation
+- Validate URLs: must be `http://` or `https://`, reject private IPs and localhost (SSRF prevention)
+- Validate monitor intervals against plan limits server-side
+
+### SSRF Prevention (Critical)
+
+Before making any outbound HTTP request to a user-supplied URL:
+
+```javascript
+import dns from 'dns/promises';
+import ipRangeCheck from 'ip-range-check';
+
+const BLOCKED_RANGES = [
+  '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16',  // Private
+  '127.0.0.0/8', '::1/128',                            // Loopback
+  '169.254.0.0/16',                                    // Link-local
+  '0.0.0.0/8',                                         // This network
+];
+
+async function isSafeUrl(url) {
+  const { hostname } = new URL(url);
+  const addresses = await dns.resolve4(hostname).catch(() => []);
+  return addresses.every(ip => !ipRangeCheck(ip, BLOCKED_RANGES));
+}
+```
+
+### Other Security Measures
+
+- All API endpoints require auth except: `/api/public/*`, `/api/auth/*`, `/api/diagnose` (rate-limited)
+- CSRF protection on session-based auth endpoints
+- Helmet.js for HTTP security headers on API
+- SQL injection: prevented by Drizzle ORM parameterized queries
+- Rate limiting: express-rate-limit or fastify-rate-limit per route
+- Secrets in environment variables, never hardcoded
+- Log all authentication events (login, register, password reset)
+- Stripe webhook signature verification (`stripe.webhooks.constructEvent`)
+
+---
+
+## 27. DevOps & Deployment
+
+### Environment Variables
+
+```
+# Database
+DATABASE_URL=postgresql://...
+
+# Redis
+REDIS_URL=redis://...
+
+# Auth
+SESSION_SECRET=...
+
+# Email
+RESEND_API_KEY=...
+
+# SMS
+TWILIO_ACCOUNT_SID=...
+TWILIO_AUTH_TOKEN=...
+TWILIO_PHONE_NUMBER=...
+
+# Stripe
+STRIPE_SECRET_KEY=...
+STRIPE_WEBHOOK_SECRET=...
+
+# Regions / Agents
+AGENT_US_EAST_URL=https://...
+AGENT_EU_WEST_URL=https://...
+AGENT_SECRET=...
+
+# App
+APP_URL=https://app.yourdomain.com
+STATUS_PAGE_BASE_URL=https://status.yourdomain.com
+```
+
+### Dockerfile (API)
+
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --production
+COPY dist/ ./dist/
+EXPOSE 3000
+CMD ["node", "dist/server.js"]
+```
+
+### Services to Deploy
+
+| Service | Platform | Notes |
+|---|---|---|
+| API server | Render / Railway | Auto-scale to 2+ instances |
+| Worker process | Render / Railway | 1 instance, scale up as needed |
+| Postgres | Render Managed DB | Enable connection pooling |
+| Redis | Upstash / Railway | Managed Redis |
+| Region agents | Fly.io | Deploy in us-east, eu-west, ap-se |
+| Status pages | Vercel / Cloudflare | Next.js SSR, edge caching |
+
+### Monitoring Your Own Monitor
+
+Use a free external service (like UptimeRobot) to monitor your API health endpoint:
+```
+GET /api/health
+Response: { status: "ok", db: "ok", redis: "ok", timestamp: "..." }
+```
+
+---
+
+## 28. MVP Build Order & Milestones
+
+Build in this exact order. Each milestone is a shippable version.
+
+### Milestone 1 — Foundation (Week 1-2)
+- [ ] Set up monorepo, TypeScript, Drizzle ORM, Postgres, Redis
+- [ ] User registration, login, logout, email verification
+- [ ] Session management
+- [ ] Basic API structure with auth middleware
+- [ ] Upgrade existing one-shot diagnostics (SSL, DNS, headers, scoring)
+
+### Milestone 2 — Core Monitoring (Week 3-4)
+- [ ] Monitor CRUD endpoints
+- [ ] BullMQ worker setup
+- [ ] Scheduled check job (HTTP checks from single region)
+- [ ] `monitor_checks` recording
+- [ ] Incident creation and resolution logic
+- [ ] Basic dashboard API endpoint
+
+### Milestone 3 — Alerting (Week 5)
+- [ ] Alert channels (email + Slack first)
+- [ ] Alert dispatcher worker
+- [ ] Down/recovery emails with good templates
+- [ ] Alert channel test endpoint
+
+### Milestone 4 — Dashboard UI (Week 6-7)
+- [ ] React frontend scaffolding (Vite + Tailwind + React Query)
+- [ ] Login/register pages
+- [ ] Dashboard with monitor list
+- [ ] Monitor detail page with response time chart
+- [ ] Create/edit monitor form
+- [ ] Incident log
+
+### Milestone 5 — Uptime & History (Week 8)
+- [ ] Uptime % calculation endpoint
+- [ ] 90-day uptime bar (colored blocks)
+- [ ] Timeseries chart endpoint
+- [ ] Data retention cleanup job
+
+### Milestone 6 — Status Pages (Week 9)
+- [ ] Status page CRUD
+- [ ] Public `/status/:slug` page (Next.js)
+- [ ] Incident history on status page
+
+### Milestone 7 — Multi-Region & Deep Diagnostics (Week 10-11)
+- [ ] Deploy 2 region agents (Fly.io)
+- [ ] Multi-region dispatch logic
+- [ ] Consensus/degraded logic
+- [ ] SSL checker + scheduled alerts
+- [ ] DNS + propagation checker
+
+### Milestone 8 — Monetization (Week 12)
+- [ ] Stripe integration (Checkout + webhooks)
+- [ ] Plan enforcement middleware
+- [ ] Billing settings page
+- [ ] Upgrade/downgrade flow
+- [ ] Prune/pause monitors on downgrade
+
+### Milestone 9 — Polish & Launch (Week 13-14)
+- [ ] Landing page with pricing section
+- [ ] PDF/CSV export
+- [ ] Public API + API keys
+- [ ] Tagging & grouping
+- [ ] SMS alerts (Twilio)
+- [ ] Discord webhook alerts
+- [ ] Performance tuning (DB indexes, query optimization)
+- [ ] Full security audit (SSRF, rate limits, input validation)
+
+---
+
+*This document covers every feature discussed. Each section is self-contained and can be handed directly to a developer or used as a specification for implementation. Build milestone by milestone — each one produces a working, shippable version of the product.*

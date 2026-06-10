@@ -3,13 +3,30 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: URL Diagnostics API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: diagnostics
+    description: One-shot URL diagnostics
+  - name: monitors
+    description: Scheduled uptime monitors
+  - name: checks
+    description: Monitor check history
+  - name: incidents
+    description: Incident management
+  - name: alertChannels
+    description: Alert notification channels
+  - name: statusPages
+    description: Public status pages
+  - name: tags
+    description: Monitor tags
+  - name: dashboard
+    description: Dashboard overview
+
 paths:
   /healthz:
     get:
@@ -24,7 +41,808 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── Diagnostics ────────────────────────────────────────────────────────────
+  /diagnose:
+    post:
+      operationId: diagnoseUrl
+      tags: [diagnostics]
+      summary: Run a one-shot URL diagnostic
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiagnoseInput"
+      responses:
+        "200":
+          description: Diagnostic result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnoseResult"
+        "400":
+          description: Invalid URL
+
+  # ─── Dashboard ──────────────────────────────────────────────────────────────
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Dashboard overview with all monitor statuses
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+
+  # ─── Monitors ───────────────────────────────────────────────────────────────
+  /monitors:
+    get:
+      operationId: listMonitors
+      tags: [monitors]
+      summary: List all monitors for the current user
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: tag
+          in: query
+          schema:
+            type: string
+          description: Filter by tag name(s), comma-separated
+      responses:
+        "200":
+          description: List of monitors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Monitor"
+    post:
+      operationId: createMonitor
+      tags: [monitors]
+      summary: Create a new monitor
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonitorInput"
+      responses:
+        "201":
+          description: Monitor created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Monitor"
+        "400":
+          description: Validation error
+        "403":
+          description: Plan limit reached
+
+  /monitors/{id}:
+    get:
+      operationId: getMonitor
+      tags: [monitors]
+      summary: Get a single monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Monitor details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Monitor"
+        "404":
+          description: Not found
+    put:
+      operationId: updateMonitor
+      tags: [monitors]
+      summary: Update a monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonitorUpdate"
+      responses:
+        "200":
+          description: Updated monitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Monitor"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteMonitor
+      tags: [monitors]
+      summary: Delete a monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /monitors/{id}/pause:
+    post:
+      operationId: pauseMonitor
+      tags: [monitors]
+      summary: Pause a monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paused monitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Monitor"
+
+  /monitors/{id}/resume:
+    post:
+      operationId: resumeMonitor
+      tags: [monitors]
+      summary: Resume a paused monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Resumed monitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Monitor"
+
+  /monitors/{id}/check:
+    post:
+      operationId: triggerMonitorCheck
+      tags: [monitors]
+      summary: Trigger an immediate manual check
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Check result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitorCheck"
+
+  /monitors/{id}/uptime:
+    get:
+      operationId: getMonitorUptime
+      tags: [monitors]
+      summary: Get uptime stats for a monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [24h, 7d, 30d, 90d]
+            default: "30d"
+      responses:
+        "200":
+          description: Uptime statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UptimeStats"
+
+  /monitors/{id}/timeseries:
+    get:
+      operationId: getMonitorTimeseries
+      tags: [monitors]
+      summary: Get response time time series data
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [1h, 24h, 7d, 30d]
+            default: "24h"
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum: [1m, 5m, 1h, 1d]
+            default: "5m"
+      responses:
+        "200":
+          description: Time series data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimeseriesData"
+
+  /monitors/{id}/checks:
+    get:
+      operationId: listMonitorChecks
+      tags: [checks]
+      summary: List recent checks for a monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Recent checks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MonitorCheck"
+
+  /monitors/{id}/incidents:
+    get:
+      operationId: listMonitorIncidents
+      tags: [incidents]
+      summary: List incidents for a specific monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Monitor incidents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Incident"
+
+  /monitors/{id}/tags:
+    post:
+      operationId: addTagToMonitor
+      tags: [tags]
+      summary: Add a tag to a monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagAssignment"
+      responses:
+        "200":
+          description: Updated monitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Monitor"
+
+  /monitors/{id}/tags/{tagId}:
+    delete:
+      operationId: removeTagFromMonitor
+      tags: [tags]
+      summary: Remove a tag from a monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated monitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Monitor"
+
+  # ─── Monitor Alert Channels ─────────────────────────────────────────────────
+  /monitors/{id}/alert-channels:
+    get:
+      operationId: listMonitorAlertChannels
+      tags: [monitors]
+      summary: List alert channels assigned to a monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Assigned alert channels
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListMonitorAlertChannelsResponse"
+    post:
+      operationId: addAlertChannelToMonitor
+      tags: [monitors]
+      summary: Assign an alert channel to a monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddAlertChannelToMonitorBody"
+      responses:
+        "201":
+          description: Alert channel assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertChannel"
+
+  /monitors/{id}/alert-channels/{channelId}:
+    delete:
+      operationId: removeAlertChannelFromMonitor
+      tags: [monitors]
+      summary: Unassign an alert channel from a monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: channelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Alert channel unassigned
+
+  # ─── Incidents ──────────────────────────────────────────────────────────────
+  /incidents:
+    get:
+      operationId: listIncidents
+      tags: [incidents]
+      summary: List all incidents (paginated)
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Paginated incidents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentPage"
+
+  /incidents/{id}:
+    get:
+      operationId: getIncident
+      tags: [incidents]
+      summary: Get incident detail
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Incident detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Incident"
+
+  /incidents/{id}/acknowledge:
+    post:
+      operationId: acknowledgeIncident
+      tags: [incidents]
+      summary: Acknowledge an incident
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Acknowledged incident
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Incident"
+
+  # ─── Alert Channels ──────────────────────────────────────────────────────────
+  /alert-channels:
+    get:
+      operationId: listAlertChannels
+      tags: [alertChannels]
+      summary: List alert channels
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: Alert channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlertChannel"
+    post:
+      operationId: createAlertChannel
+      tags: [alertChannels]
+      summary: Create an alert channel
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertChannelInput"
+      responses:
+        "201":
+          description: Alert channel created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertChannel"
+
+  /alert-channels/{id}:
+    put:
+      operationId: updateAlertChannel
+      tags: [alertChannels]
+      summary: Update an alert channel
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertChannelUpdate"
+      responses:
+        "200":
+          description: Updated alert channel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertChannel"
+    delete:
+      operationId: deleteAlertChannel
+      tags: [alertChannels]
+      summary: Delete an alert channel
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /alert-channels/{id}/test:
+    post:
+      operationId: testAlertChannel
+      tags: [alertChannels]
+      summary: Send a test alert
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Test sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # ─── Status Pages ────────────────────────────────────────────────────────────
+  /status-pages:
+    get:
+      operationId: listStatusPages
+      tags: [statusPages]
+      summary: List status pages
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: Status pages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StatusPage"
+    post:
+      operationId: createStatusPage
+      tags: [statusPages]
+      summary: Create a status page
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusPageInput"
+      responses:
+        "201":
+          description: Status page created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusPage"
+
+  /status-pages/{id}:
+    put:
+      operationId: updateStatusPage
+      tags: [statusPages]
+      summary: Update a status page
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusPageUpdate"
+      responses:
+        "200":
+          description: Updated status page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusPage"
+    delete:
+      operationId: deleteStatusPage
+      tags: [statusPages]
+      summary: Delete a status page
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /public/status/{slug}:
+    get:
+      operationId: getPublicStatusPage
+      tags: [statusPages]
+      summary: Get public status page data (no auth)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public status page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicStatusPage"
+        "404":
+          description: Not found
+
+  # ─── Tags ─────────────────────────────────────────────────────────────────
+  /tags:
+    get:
+      operationId: listTags
+      tags: [tags]
+      summary: List all tags
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: Tags list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tag"
+    post:
+      operationId: createTag
+      tags: [tags]
+      summary: Create a tag
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagInput"
+      responses:
+        "201":
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+
+  /tags/{id}:
+    put:
+      operationId: updateTag
+      tags: [tags]
+      summary: Update a tag
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagUpdate"
+      responses:
+        "200":
+          description: Updated tag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+    delete:
+      operationId: deleteTag
+      tags: [tags]
+      summary: Delete a tag
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
 components:
+  securitySchemes:
+    clerkAuth:
+      type: apiKey
+      in: cookie
+      name: __session
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +852,659 @@ components:
       required:
         - status
 
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    # ─── Diagnostics ───────────────────────────────────────────────────────
+    DiagnoseInput:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+
+    DiagnoseResult:
+      type: object
+      required: [url, checkedAt, availability]
+      properties:
+        url:
+          type: string
+        checkedAt:
+          type: string
+          format: date-time
+        availability:
+          $ref: "#/components/schemas/AvailabilityResult"
+        ssl:
+          $ref: "#/components/schemas/SslResult"
+        dns:
+          $ref: "#/components/schemas/DnsResult"
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        performance:
+          $ref: "#/components/schemas/PerformanceResult"
+        security:
+          $ref: "#/components/schemas/SecurityResult"
+        redirectChain:
+          type: array
+          items:
+            $ref: "#/components/schemas/RedirectHop"
+
+    AvailabilityResult:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [up, down, timeout, error]
+        httpStatus:
+          type: ["integer", "null"]
+        responseTimeMs:
+          type: ["integer", "null"]
+        errorMessage:
+          type: ["string", "null"]
+
+    SslResult:
+      type: object
+      required: [valid]
+      properties:
+        valid:
+          type: boolean
+        issuer:
+          type: ["string", "null"]
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+        daysRemaining:
+          type: ["integer", "null"]
+        protocol:
+          type: ["string", "null"]
+        cipher:
+          type: ["string", "null"]
+
+    DnsResult:
+      type: object
+      required: [resolved]
+      properties:
+        resolved:
+          type: boolean
+        ipAddress:
+          type: ["string", "null"]
+        aRecords:
+          type: array
+          items:
+            type: string
+        ttl:
+          type: ["integer", "null"]
+
+    PerformanceResult:
+      type: object
+      required: [score, grade]
+      properties:
+        score:
+          type: integer
+        grade:
+          type: string
+        ttfbMs:
+          type: ["integer", "null"]
+        responseSizeKb:
+          type: ["number", "null"]
+        compression:
+          type: ["string", "null"]
+
+    SecurityResult:
+      type: object
+      required: [score]
+      properties:
+        score:
+          type: integer
+        hsts:
+          type: boolean
+        xFrameOptions:
+          type: boolean
+        csp:
+          type: boolean
+        xContentType:
+          type: boolean
+        referrerPolicy:
+          type: boolean
+
+    RedirectHop:
+      type: object
+      required: [from, status]
+      properties:
+        from:
+          type: string
+        to:
+          type: ["string", "null"]
+        status:
+          type: integer
+
+    # ─── Dashboard ─────────────────────────────────────────────────────────
+    Dashboard:
+      type: object
+      required: [summary, monitors, recentIncidents]
+      properties:
+        summary:
+          $ref: "#/components/schemas/DashboardSummary"
+        monitors:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonitorSummary"
+        recentIncidents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Incident"
+
+    DashboardSummary:
+      type: object
+      required: [total, up, down, paused, degraded]
+      properties:
+        total:
+          type: integer
+        up:
+          type: integer
+        down:
+          type: integer
+        paused:
+          type: integer
+        degraded:
+          type: integer
+
+    MonitorSummary:
+      type: object
+      required: [id, name, url, status, lastCheckedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          type: string
+        status:
+          type: string
+          enum: [up, down, degraded, paused, unknown]
+        uptime24h:
+          type: ["number", "null"]
+        uptime7d:
+          type: ["number", "null"]
+        lastResponseTimeMs:
+          type: ["integer", "null"]
+        lastCheckedAt:
+          type: ["string", "null"]
+          format: date-time
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tag"
+
+    # ─── Monitor ──────────────────────────────────────────────────────────
+    Monitor:
+      type: object
+      required: [id, name, url, method, intervalSeconds, isActive, lastStatus, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          type: string
+        method:
+          type: string
+          enum: [GET, POST, HEAD]
+        intervalSeconds:
+          type: integer
+        timeoutSeconds:
+          type: integer
+        expectedStatus:
+          type: integer
+        keywordAssert:
+          type: ["string", "null"]
+        regions:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        notifyOnDown:
+          type: boolean
+        notifyOnRecovery:
+          type: boolean
+        lastCheckedAt:
+          type: ["string", "null"]
+          format: date-time
+        lastStatus:
+          type: ["string", "null"]
+          enum: [up, down, degraded, null]
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tag"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MonitorInput:
+      type: object
+      required: [name, url]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        url:
+          type: string
+          format: uri
+        method:
+          type: string
+          enum: [GET, POST, HEAD]
+          default: GET
+        intervalSeconds:
+          type: integer
+          default: 300
+        timeoutSeconds:
+          type: integer
+          default: 30
+        expectedStatus:
+          type: integer
+          default: 200
+        keywordAssert:
+          type: string
+        regions:
+          type: array
+          items:
+            type: string
+        notifyOnDown:
+          type: boolean
+          default: true
+        notifyOnRecovery:
+          type: boolean
+          default: true
+
+    MonitorUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        method:
+          type: string
+          enum: [GET, POST, HEAD]
+        intervalSeconds:
+          type: integer
+        timeoutSeconds:
+          type: integer
+        expectedStatus:
+          type: integer
+        keywordAssert:
+          type: string
+        regions:
+          type: array
+          items:
+            type: string
+        notifyOnDown:
+          type: boolean
+        notifyOnRecovery:
+          type: boolean
+
+    # ─── Monitor Check ────────────────────────────────────────────────────
+    MonitorCheck:
+      type: object
+      required: [id, monitorId, region, status, checkedAt]
+      properties:
+        id:
+          type: string
+        monitorId:
+          type: string
+        region:
+          type: string
+        status:
+          type: string
+          enum: [up, down, timeout, error]
+        httpStatus:
+          type: ["integer", "null"]
+        responseTimeMs:
+          type: ["integer", "null"]
+        errorMessage:
+          type: ["string", "null"]
+        checkedAt:
+          type: string
+          format: date-time
+
+    # ─── Uptime ───────────────────────────────────────────────────────────
+    UptimeStats:
+      type: object
+      required: [period, uptimePercent, totalChecks]
+      properties:
+        period:
+          type: string
+        uptimePercent:
+          type: number
+        totalChecks:
+          type: integer
+        downChecks:
+          type: integer
+        avgResponseTimeMs:
+          type: ["number", "null"]
+        p95ResponseTimeMs:
+          type: ["number", "null"]
+        incidentsCount:
+          type: integer
+        totalDowntimeMinutes:
+          type: number
+
+    # ─── Timeseries ──────────────────────────────────────────────────────
+    TimeseriesData:
+      type: object
+      required: [monitorId, period, granularity, series]
+      properties:
+        monitorId:
+          type: string
+        period:
+          type: string
+        granularity:
+          type: string
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeseriesPoint"
+
+    TimeseriesPoint:
+      type: object
+      required: [timestamp, status]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        responseTimeMs:
+          type: ["integer", "null"]
+        status:
+          type: string
+          enum: [up, down, timeout, error]
+
+    # ─── Incidents ────────────────────────────────────────────────────────
+    Incident:
+      type: object
+      required: [id, monitorId, startedAt, isAcknowledged, createdAt]
+      properties:
+        id:
+          type: string
+        monitorId:
+          type: string
+        monitorName:
+          type: ["string", "null"]
+        monitorUrl:
+          type: ["string", "null"]
+        startedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: ["string", "null"]
+          format: date-time
+        durationSeconds:
+          type: ["integer", "null"]
+        rootCause:
+          type: ["string", "null"]
+        affectedRegions:
+          type: array
+          items:
+            type: string
+        isAcknowledged:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    IncidentPage:
+      type: object
+      required: [items, total, page, limit]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Incident"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    # ─── Alert Channels ───────────────────────────────────────────────────
+    AlertChannel:
+      type: object
+      required: [id, type, name, isVerified, createdAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [email, slack, discord, webhook]
+        name:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+        isVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    AlertChannelInput:
+      type: object
+      required: [type, name, config]
+      properties:
+        type:
+          type: string
+          enum: [email, slack, discord, webhook]
+        name:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+
+    AlertChannelUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+
+    ListMonitorAlertChannelsResponse:
+      type: array
+      items:
+        $ref: "#/components/schemas/AlertChannel"
+
+    AddAlertChannelToMonitorBody:
+      type: object
+      required: [alertChannelId]
+      properties:
+        alertChannelId:
+          type: string
+
+    ListMonitorAlertChannelsParams:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+
+    AddAlertChannelToMonitorParams:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+
+    RemoveAlertChannelFromMonitorParams:
+      type: object
+      required: [id, channelId]
+      properties:
+        id:
+          type: string
+        channelId:
+          type: string
+
+    # ─── Status Pages ─────────────────────────────────────────────────────
+    StatusPage:
+      type: object
+      required: [id, slug, title, isPublic, createdAt]
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        isPublic:
+          type: boolean
+        monitorIds:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    StatusPageInput:
+      type: object
+      required: [slug, title]
+      properties:
+        slug:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        isPublic:
+          type: boolean
+          default: true
+        monitorIds:
+          type: array
+          items:
+            type: string
+
+    StatusPageUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        isPublic:
+          type: boolean
+        monitorIds:
+          type: array
+          items:
+            type: string
+
+    PublicStatusPage:
+      type: object
+      required: [title, overallStatus, monitors]
+      properties:
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        overallStatus:
+          type: string
+          enum: [operational, degraded, outage]
+        monitors:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicMonitorStatus"
+        activeIncidents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Incident"
+        recentIncidents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Incident"
+
+    PublicMonitorStatus:
+      type: object
+      required: [name, status, uptime90d]
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [up, down, degraded, unknown]
+        uptime90d:
+          type: number
+        dailyBars:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyBar"
+
+    DailyBar:
+      type: object
+      required: [date, status, uptime]
+      properties:
+        date:
+          type: string
+        status:
+          type: string
+          enum: [up, down, degraded, nodata]
+        uptime:
+          type: number
+
+    # ─── Tags ─────────────────────────────────────────────────────────────
+    Tag:
+      type: object
+      required: [id, name, color]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+
+    TagInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        color:
+          type: string
+          default: "#6366f1"
+
+    TagUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+
+    TagAssignment:
+      type: object
+      required: [tagId]
+      properties:
+        tagId:
+          type: string
