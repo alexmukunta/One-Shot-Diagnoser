@@ -12,7 +12,7 @@ import { dispatchAlerts } from "./notifier";
 import { validateNoSsrf } from "./ssrf";
 import { logger } from "./logger";
 
-const SSL_EXPIRY_THRESHOLDS = [14, 7, 3];
+const SSL_EXPIRY_THRESHOLDS = [30, 14, 7, 3];
 
 async function getMonitorChannels(monitorId: number) {
   const rows = await db

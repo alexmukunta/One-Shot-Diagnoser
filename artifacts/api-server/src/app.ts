@@ -38,6 +38,9 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
     "Content-Security-Policy",
     "default-src 'none'; frame-ancestors 'none'",
   );
+  if (process.env.NODE_ENV === "production") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
   next();
 });
 

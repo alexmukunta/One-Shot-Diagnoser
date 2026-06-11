@@ -1,4 +1,4 @@
-# URL Diagnostics
+# One Shot Diagnoser
 
 A full-stack uptime monitoring SaaS — one-shot URL diagnostics, scheduled monitors, incident tracking, SSL/DNS checks, status pages, and Clerk authentication.
 
@@ -12,6 +12,8 @@ A full-stack uptime monitoring SaaS — one-shot URL diagnostics, scheduled moni
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string (provisioned)
 - Required env: `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, `VITE_CLERK_PUBLISHABLE_KEY` — provisioned via Replit-managed Clerk
+- Optional env: `RESEND_API_KEY` (secret) — enables email alert delivery via Resend
+- Optional env: `RESEND_FROM_EMAIL` — sender address for alert emails (default: `onboarding@resend.dev`; override with a verified Resend domain address)
 
 ## Stack
 

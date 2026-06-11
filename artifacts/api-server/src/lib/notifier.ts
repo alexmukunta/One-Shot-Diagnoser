@@ -100,7 +100,7 @@ function buildEmailHtml(monitor: MonitorInfo, event: AlertEvent, incident: Incid
     <tr>
       <td style="padding:32px;background:#161b22;border-radius:12px;border:1px solid #30363d">
         <div style="margin-bottom:24px">
-          <span style="background:#1f2937;color:#9ca3af;font-size:12px;padding:4px 10px;border-radius:20px;border:1px solid #374151">URL Diagnostics</span>
+          <span style="background:#1f2937;color:#9ca3af;font-size:12px;padding:4px 10px;border-radius:20px;border:1px solid #374151">One Shot Diagnoser</span>
         </div>
         <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${color}">
           ${statusEmoji(event)} ${monitor.name} ${statusText}
@@ -133,7 +133,7 @@ function buildEmailHtml(monitor: MonitorInfo, event: AlertEvent, incident: Incid
           </tr>
         </table>
         <p style="margin:0;font-size:12px;color:#6b7280">
-          You're receiving this because you configured this alert channel in URL Diagnostics.
+          You're receiving this because you configured this alert channel in One Shot Diagnoser.
         </p>
       </td>
     </tr>
@@ -211,7 +211,7 @@ async function notifyDiscord(
     { name: "Time", value: new Date().toUTCString(), inline: false },
   ];
   await withRetry(
-    () => sendWebhook(webhookUrl, { embeds: [{ title, color, fields, footer: { text: "URL Diagnostics" } }] }),
+    () => sendWebhook(webhookUrl, { embeds: [{ title, color, fields, footer: { text: "One Shot Diagnoser" } }] }),
     `discord:${webhookUrl}`,
   );
 }
@@ -269,7 +269,7 @@ async function notifyEmail(
 
   await withRetry(async () => {
     const { error } = await resendClient!.emails.send({
-      from: `URL Diagnostics <${fromAddress}>`,
+      from: `One Shot Diagnoser <${fromAddress}>`,
       to: [toEmail],
       subject,
       html: buildEmailHtml(monitor, event, incident),

@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { useEffect, useRef, useState } from "react";
 import {
   Activity, Shield, Zap, Bell, BarChart2, Globe,
-  ArrowRight, Check, Clock,
+  ArrowRight, Check, Clock, Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -47,7 +47,7 @@ function BackgroundFeatureCycle() {
     >
       <div
         style={{
-          opacity: phase === "visible" ? 0.13 : 0,
+          opacity: phase === "visible" ? 0.10 : 0,
           transform:
             phase === "entering" ? "translateX(80px)" :
             phase === "exiting"  ? "translateX(-80px)" :
@@ -96,7 +96,7 @@ export default function LandingPage() {
           <div className="w-7 h-7 rounded bg-primary flex items-center justify-center">
             <Activity className="w-4 h-4 text-white" />
           </div>
-          <span className="font-semibold text-sm tracking-tight">URL Diagnostics</span>
+          <span className="font-semibold text-sm tracking-tight">One Shot Diagnoser</span>
         </div>
         <nav className="hidden sm:flex items-center gap-6 text-sm text-muted-foreground">
           <a href="#how-it-works" className="hover:text-foreground transition-colors">How it works</a>
@@ -118,7 +118,6 @@ export default function LandingPage() {
       <section className="relative overflow-hidden">
         <BackgroundFeatureCycle />
 
-        {/* Vignette so edges don't clip awkwardly */}
         <div
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
@@ -129,15 +128,58 @@ export default function LandingPage() {
         />
 
         <div className="relative z-10 max-w-3xl mx-auto px-6 py-36 sm:py-44 text-center">
+          <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-3 py-1 mb-6">
+            <Search className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-medium text-primary">Instant URL Intelligence</span>
+          </div>
+
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
-            Know when your{" "}
-            <span className="text-primary">services go down</span>
-            {" "}before your users do.
+            Welcome to{" "}
+            <span className="text-primary">One Shot Diagnoser</span>
           </h1>
 
-          <p className="text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto">
-            Automated endpoint monitoring with 60-second checks, SSL certificate tracking, and real-time incident alerts. Your infrastructure watched around the clock — your team responds first.
+          <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+            Diagnose any URL in one click — check availability, SSL certificates, DNS health, security headers, and performance. Set up scheduled monitors, get alerted the moment something breaks, and share live status pages with your users.
           </p>
+
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link href="/sign-up">
+              <Button size="lg" className="gap-2 w-full sm:w-auto" data-testid="button-hero-signup">
+                Start monitoring free
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+            <Link href="/diagnose">
+              <Button size="lg" variant="outline" className="gap-2 w-full sm:w-auto">
+                <Zap className="w-4 h-4" />
+                Try the URL checker
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Capability strip ─── */}
+      <section className="border-t border-border/60 bg-card/30">
+        <div className="max-w-4xl mx-auto px-6 py-10">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {[
+              { icon: Zap,      title: "One-shot diagnostics",  desc: "Instant availability, SSL, DNS, headers & performance in one request" },
+              { icon: Clock,    title: "Scheduled monitoring",  desc: "Check any endpoint every 60 seconds and open incidents automatically" },
+              { icon: Shield,   title: "SSL & DNS health",      desc: "Track certificate expiry and get alerted 30 days before it lapses" },
+              { icon: Bell,     title: "Multi-channel alerts",  desc: "Send outage notifications to email, Slack, Discord, or any webhook" },
+              { icon: BarChart2,title: "90-day uptime history", desc: "Response-time charts and uptime percentages over any time window" },
+              { icon: Globe,    title: "Public status pages",   desc: "One-link status page showing live uptime for your services" },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="bg-card border border-card-border rounded-lg p-4">
+                <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center mb-3">
+                  <Icon className="w-4 h-4 text-primary" />
+                </div>
+                <div className="text-sm font-semibold mb-1">{title}</div>
+                <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -151,18 +193,18 @@ export default function LandingPage() {
           <div className="space-y-8">
             <Step
               num="1"
-              title="Add a URL"
-              desc="Paste any public URL — your API, your marketing site, your checkout page. Set how often to check it and what HTTP status means 'up'."
+              title="Diagnose a URL instantly"
+              desc="Paste any URL into the one-shot checker — get availability, SSL certificate info, DNS resolution, security header grades, and performance metrics in seconds, no account needed."
             />
             <Step
               num="2"
-              title="Connect your alerts"
-              desc="Link a Slack channel, Discord webhook, email address, or any custom endpoint. Alerts fire within 60 seconds of detection — before your customers notice."
+              title="Add a scheduled monitor"
+              desc="Turn any endpoint into a continuous monitor. Set your check interval, expected status code, and optional keyword assertion. Incidents open automatically when something breaks."
             />
             <Step
               num="3"
-              title="Watch the dashboard"
-              desc="See uptime history, response-time charts, and active incidents in one place. Share a public status page with your users so they always know what's happening."
+              title="Connect alerts and share status"
+              desc="Route outage notifications to Slack, Discord, email, or any webhook. Publish a public status page so your users always know what's happening — without emailing your support team."
             />
           </div>
         </div>
@@ -175,16 +217,16 @@ export default function LandingPage() {
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-5">
               <Activity className="w-6 h-6 text-primary" />
             </div>
-            <h2 className="text-xl font-bold mb-3">Ready to stop being the last to know?</h2>
+            <h2 className="text-xl font-bold mb-3">Ready to diagnose and monitor your URLs?</h2>
             <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-              Create a free account, add your first monitor, and know within 60 seconds if something breaks.
+              Create a free account and start monitoring your first endpoint in under two minutes.
             </p>
             <ul className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 mb-7">
               {[
                 "No credit card required",
                 "1-minute checks",
-                "Slack, Discord & email alerts",
-                "SSL monitoring",
+                "Email, Slack & Discord alerts",
+                "SSL expiry monitoring",
                 "Public status pages",
               ].map((f) => (
                 <li key={f} className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -210,7 +252,7 @@ export default function LandingPage() {
             <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
               <Activity className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-sm font-semibold">URL Diagnostics</span>
+            <span className="text-sm font-semibold">One Shot Diagnoser</span>
           </div>
           <div className="flex items-center gap-5 text-xs text-muted-foreground">
             <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
@@ -218,7 +260,7 @@ export default function LandingPage() {
             <Link href="/diagnose" className="hover:text-foreground transition-colors">URL Checker</Link>
           </div>
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} URL Diagnostics · Built for engineers
+            © {new Date().getFullYear()} One Shot Diagnoser
           </p>
         </div>
       </footer>

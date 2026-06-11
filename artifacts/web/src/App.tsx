@@ -112,10 +112,25 @@ function Router() {
   );
 }
 
+const clerkLocalization = {
+  signIn: {
+    start: {
+      title: "Sign in to One Shot Diagnoser",
+      subtitle: "Welcome back! Please sign in to continue.",
+    },
+  },
+  signUp: {
+    start: {
+      title: "Create your account",
+      subtitle: "Welcome to One Shot Diagnoser — start monitoring in minutes.",
+    },
+  },
+};
+
 function App() {
   return (
     <ErrorBoundary>
-      <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance}>
+      <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance} localization={clerkLocalization}>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <WouterRouter base={basePath}>

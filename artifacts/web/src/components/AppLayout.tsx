@@ -42,7 +42,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <Activity className="w-4 h-4 text-white" />
             </div>
             <span className="font-semibold text-sidebar-foreground tracking-tight text-sm">
-              URL Diagnostics
+              One Shot Diagnoser
             </span>
           </div>
         </div>
