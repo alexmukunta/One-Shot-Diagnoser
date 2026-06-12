@@ -1,9 +1,15 @@
 import { getAuth } from "@clerk/express";
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { alertChannelsTable } from "@workspace/db";
+import {
+  alertChannelsTable,
+  monitorAlertChannelsTable,
+  monitorsTable,
+  monitorChecksTable,
+} from "@workspace/db";
 import { dispatchAlerts } from "../lib/notifier";
+import { runMonitorCheck } from "../lib/runCheck";
 import {
   CreateAlertChannelBody,
   UpdateAlertChannelParams,
@@ -15,6 +21,7 @@ import {
   TestAlertChannelResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -163,21 +170,83 @@ router.post(
       return;
     }
 
+    // Find a monitor that has this alert channel attached
+    const [attachment] = await db
+      .select({ monitor: monitorsTable })
+      .from(monitorAlertChannelsTable)
+      .innerJoin(monitorsTable, eq(monitorAlertChannelsTable.monitorId, monitorsTable.id))
+      .where(
+        and(
+          eq(monitorAlertChannelsTable.alertChannelId, channel.id),
+          eq(monitorsTable.userId, userId),
+        )
+      )
+      .limit(1);
+
     try {
-      await dispatchAlerts(
-        [{
-          id: String(channel.id),
-          type: channel.type,
-          name: channel.name,
-          config: channel.config as Record<string, unknown>,
-        }],
-        { id: "0", name: "Test Monitor", url: "https://example.com" },
-        "down",
-        { id: "0", rootCause: "This is a test alert from URL Diagnostics", startedAt: new Date() },
-      );
+      if (attachment) {
+        // Run a live check so the test notification contains real data
+        const monitor = attachment.monitor;
+        logger.info(
+          { channelId: channel.id, monitorId: monitor.id },
+          "Alert channel test: running live check on attached monitor",
+        );
+
+        await runMonitorCheck(monitor.id);
+
+        const [latestCheck] = await db
+          .select()
+          .from(monitorChecksTable)
+          .where(eq(monitorChecksTable.monitorId, monitor.id))
+          .orderBy(desc(monitorChecksTable.checkedAt))
+          .limit(1);
+
+        const checkStatus = latestCheck?.status ?? "up";
+        const event = checkStatus === "down" || checkStatus === "degraded" ? "down" : "recovery";
+
+        await dispatchAlerts(
+          [{
+            id: String(channel.id),
+            type: channel.type,
+            name: channel.name,
+            config: channel.config as Record<string, unknown>,
+          }],
+          { id: String(monitor.id), name: monitor.name, url: monitor.url },
+          event,
+          {
+            id: latestCheck ? String(latestCheck.id) : "test",
+            rootCause: event === "down"
+              ? (latestCheck?.error ?? "Test alert — monitor is currently down")
+              : `[Test] Monitor is UP · response ${latestCheck?.responseTimeMs ?? "–"}ms`,
+            startedAt: latestCheck?.checkedAt ?? new Date(),
+          },
+        );
+      } else {
+        // No monitors attached — send a clearly-labelled demo alert
+        await dispatchAlerts(
+          [{
+            id: String(channel.id),
+            type: channel.type,
+            name: channel.name,
+            config: channel.config as Record<string, unknown>,
+          }],
+          { id: "0", name: "Example Monitor (no monitors attached)", url: "https://example.com" },
+          "down",
+          {
+            id: "0",
+            rootCause:
+              "This is a test alert from One Shot Diagnoser. Attach this channel to a monitor to receive real check data.",
+            startedAt: new Date(),
+          },
+        );
+      }
+
       res.json(TestAlertChannelResponse.parse({ success: true, message: "Test notification sent" }));
     } catch (err) {
-      res.status(500).json(TestAlertChannelResponse.parse({ success: false, message: (err as Error).message }));
+      logger.error({ err, channelId: channel.id }, "Alert channel test failed");
+      res.status(500).json(
+        TestAlertChannelResponse.parse({ success: false, message: (err as Error).message })
+      );
     }
   }
 );

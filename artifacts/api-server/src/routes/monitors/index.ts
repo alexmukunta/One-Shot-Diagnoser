@@ -188,7 +188,7 @@ router.get("/monitors/:id", requireAuth, async (req, res): Promise<void> => {
   res.json(GetMonitorResponse.parse(formatMonitor(monitor, tags)));
 });
 
-router.patch("/monitors/:id", requireAuth, async (req, res): Promise<void> => {
+router.put("/monitors/:id", requireAuth, async (req, res): Promise<void> => {
   const userId = getAuth(req).userId as string;
   const params = UpdateMonitorParams.safeParse(req.params);
   if (!params.success) {
@@ -201,9 +201,23 @@ router.patch("/monitors/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const { keywordAssert, ...rest } = parsed.data;
-  const updateData: Record<string, unknown> = { ...rest };
-  if (keywordAssert !== undefined) updateData.keywordAssertion = keywordAssert;
+  // Build update data explicitly using proper Drizzle column types
+  const updateData: Partial<typeof monitorsTable.$inferInsert> = {};
+  if (parsed.data.name !== undefined) updateData.name = parsed.data.name;
+  if (parsed.data.url !== undefined) updateData.url = parsed.data.url;
+  if (parsed.data.method !== undefined) updateData.method = parsed.data.method;
+  if (parsed.data.intervalSeconds !== undefined) updateData.intervalSeconds = parsed.data.intervalSeconds;
+  if (parsed.data.timeoutSeconds !== undefined) updateData.timeoutSeconds = parsed.data.timeoutSeconds;
+  if (parsed.data.expectedStatus !== undefined) updateData.expectedStatus = parsed.data.expectedStatus;
+  if (parsed.data.keywordAssert !== undefined) updateData.keywordAssertion = parsed.data.keywordAssert;
+  if (parsed.data.regions !== undefined) updateData.regions = parsed.data.regions;
+  if (parsed.data.notifyOnDown !== undefined) updateData.notifyOnDown = parsed.data.notifyOnDown;
+  if (parsed.data.notifyOnRecovery !== undefined) updateData.notifyOnRecovery = parsed.data.notifyOnRecovery;
+
+  if (Object.keys(updateData).length === 0) {
+    res.status(400).json({ error: "No fields to update" });
+    return;
+  }
 
   const [monitor] = await db
     .update(monitorsTable)

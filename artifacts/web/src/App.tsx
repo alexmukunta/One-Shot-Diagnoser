@@ -123,7 +123,17 @@ const clerkLocalization = {
     start: {
       title: "Create your account",
       subtitle: "Welcome to One Shot Diagnoser — start monitoring in minutes.",
+      actionText: "Already have an account?",
+      actionLink: "Sign in instead",
     },
+    emailCode: {
+      title: "Verify your email",
+      subtitle: "Enter the code sent to your email address to continue.",
+    },
+  },
+  unstable__errors: {
+    form_identifier_exists__email_address:
+      "An account with this email already exists. Please sign in instead.",
   },
 };
 
