@@ -1,6 +1,6 @@
 import { getAuth } from "@clerk/express";
 import { Router, type IRouter } from "express";
-import { eq, and, gte, desc, sql, asc } from "drizzle-orm";
+import { eq, and, gte, desc, sql, asc, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   monitorsTable,
@@ -65,6 +65,30 @@ async function getMonitorTags(
   return tags.map((t) => ({ id: String(t.id), name: t.name, color: t.color }));
 }
 
+async function getMonitorTagsBatch(
+  monitorIds: number[]
+): Promise<Map<number, { id: string; name: string; color: string }[]>> {
+  if (monitorIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      monitorId: monitorTagsTable.monitorId,
+      id: tagsTable.id,
+      name: tagsTable.name,
+      color: tagsTable.color,
+    })
+    .from(monitorTagsTable)
+    .innerJoin(tagsTable, eq(tagsTable.id, monitorTagsTable.tagId))
+    .where(inArray(monitorTagsTable.monitorId, monitorIds));
+
+  const map = new Map<number, { id: string; name: string; color: string }[]>();
+  for (const row of rows) {
+    const arr = map.get(row.monitorId) ?? [];
+    arr.push({ id: String(row.id), name: row.name, color: row.color });
+    map.set(row.monitorId, arr);
+  }
+  return map;
+}
+
 function parsePeriod(period: string): Date {
   const now = Date.now();
   const num = parseInt(period);
@@ -107,29 +131,24 @@ router.get("/monitors", requireAuth, async (req, res): Promise<void> => {
   const userId = getAuth(req).userId as string;
   const qp = ListMonitorsQueryParams.safeParse(req.query);
 
-  let monitors = await db
+  const monitors = await db
     .select()
     .from(monitorsTable)
     .where(eq(monitorsTable.userId, userId))
     .orderBy(asc(monitorsTable.createdAt));
 
+  const monitorIds = monitors.map((m) => m.id);
+  const tagsByMonitor = await getMonitorTagsBatch(monitorIds);
+
+  let filtered = monitors;
   if (qp.success && qp.data.tag) {
     const tagName = qp.data.tag;
-    const filteredIds: number[] = [];
-    for (const m of monitors) {
-      const tags = await getMonitorTags(m.id);
-      if (tags.some((t) => t.name === tagName)) filteredIds.push(m.id);
-    }
-    monitors = monitors.filter((m) => filteredIds.includes(m.id));
+    filtered = monitors.filter((m) =>
+      (tagsByMonitor.get(m.id) ?? []).some((t) => t.name === tagName)
+    );
   }
 
-  const result = await Promise.all(
-    monitors.map(async (m) => {
-      const tags = await getMonitorTags(m.id);
-      return formatMonitor(m, tags);
-    })
-  );
-
+  const result = filtered.map((m) => formatMonitor(m, tagsByMonitor.get(m.id) ?? []));
   res.json(ListMonitorsResponse.parse(result));
 });
 

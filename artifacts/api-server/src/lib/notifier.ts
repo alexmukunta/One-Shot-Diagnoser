@@ -31,6 +31,11 @@ if (process.env.RESEND_API_KEY) {
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 1_000;
 
+const APP_DOMAIN =
+  process.env.REPLIT_DOMAINS?.split(",")[0]?.trim() ??
+  "one-shot-diagnoser.replit.app";
+const APP_URL = `https://${APP_DOMAIN}`;
+
 async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
@@ -132,8 +137,21 @@ function buildEmailHtml(monitor: MonitorInfo, event: AlertEvent, incident: Incid
             </td>
           </tr>
         </table>
-        <p style="margin:0;font-size:12px;color:#6b7280">
-          You're receiving this because you configured this alert channel in One Shot Diagnoser.
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px">
+          <tr>
+            <td>
+              <a href="${APP_URL}/monitors/${monitor.id}"
+                 style="display:inline-block;background:#1f6feb;color:#ffffff;font-size:13px;font-weight:600;padding:10px 20px;border-radius:6px;text-decoration:none">
+                View monitor →
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:0;font-size:11px;color:#6b7280;line-height:1.6">
+          You're receiving this because you configured this alert channel in
+          <a href="${APP_URL}" style="color:#58a6ff;text-decoration:none">One Shot Diagnoser</a>.
+          To stop receiving these alerts, 
+          <a href="${APP_URL}/alert-channels" style="color:#58a6ff;text-decoration:none">manage your alert channels</a>.
         </p>
       </td>
     </tr>
@@ -149,7 +167,7 @@ async function sendWebhook(
 ): Promise<void> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "User-Agent": "URLDiagnostics/1.0",
+    "User-Agent": "OneShotDiagnoser/1.0",
   };
   if (secret) headers["X-Webhook-Secret"] = secret;
 

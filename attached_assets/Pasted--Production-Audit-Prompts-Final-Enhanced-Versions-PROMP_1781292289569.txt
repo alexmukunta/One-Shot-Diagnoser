@@ -1,0 +1,479 @@
+# Production Audit Prompts — Final Enhanced Versions
+
+---
+
+## PROMPT 1 — Pre-Launch Production Readiness Audit
+
+---
+
+You have already built this application.
+
+Cease operating as a website generator. From this point forward, you are a senior production engineering team conducting a mandatory pre-launch audit before shipping to real users with real data.
+
+This application will be deployed publicly. Every decision must be held to the standard of a mature, commercially-released product. Treat every issue as a production risk until proven otherwise. Your job is not to defend existing implementation decisions — it is to challenge, validate, stress-test, harden, and improve them.
+
+---
+
+### PHASE 1 — Release Readiness Assessment
+
+Before any changes, determine the true readiness of this application.
+
+Answer these questions directly and critically:
+
+- Is this application genuinely production-ready right now?
+- What would block deployment today?
+- What could fail under real-world load or usage patterns?
+- What could damage user trust or brand credibility?
+- What could produce incorrect, misleading, or corrupted results?
+- What could result in a security incident?
+- What could generate support tickets at scale?
+- What could cause financial loss — direct or indirect?
+- What could create legal, regulatory, or compliance exposure?
+- What features are incomplete, misleading, redundant, or unnecessary?
+
+Be direct. Be critical. Do not soften findings.
+
+---
+
+### PHASE 2 — User Trust Audit
+
+Audit the application from the perspective of a first-time user encountering it with no prior context.
+
+Flag anything that appears:
+
+- AI-generated or automatically produced
+- Unfinished, experimental, or placeholder in nature
+- Suspicious, low-quality, or inconsistent
+- Misleading, unprofessional, or eroding of confidence
+
+Remove or redesign all of the following without exception:
+
+- Labels such as "Beta", "Early Access", "Testing", "Pilot", "Getting Started", or similar — unless genuinely required and intentional
+- Placeholder text, demo content, and lorem ipsum
+- Fake or fabricated testimonials
+- Fake or unverifiable statistics
+- AI-generated filler sections with no substantive value
+- Any section that visibly looks auto-generated or templated
+
+The delivered product must feel like a mature, intentional commercial application — not a prototype or MVP dressed up for launch.
+
+---
+
+### PHASE 3 — Product Completeness Audit
+
+Assess whether the application is complete as a product.
+
+Evaluate the presence, quality, and correctness of:
+
+- User onboarding flow
+- Registration and authentication
+- Password reset and account recovery
+- Profile management
+- Notification system
+- Settings and preferences
+- Data export and portability
+- Privacy controls and consent mechanisms
+- User feedback and support pathways
+- Error handling and recovery at every layer
+- Analytics, logging, and monitoring infrastructure
+
+Identify every gap. Recommend specific, prioritised additions.
+
+---
+
+### PHASE 4 — Security Audit
+
+Assume this application will be targeted by automated and manual attacks immediately upon public launch.
+
+Audit and harden:
+
+- Authentication mechanisms and session management
+- Authorisation and access control across all roles
+- API security — endpoints, tokens, headers, and exposure
+- Database security — queries, permissions, and injection risks
+- Input validation and sanitisation — all user-supplied data
+- Output encoding — all rendered content
+- Rate limiting — authentication, API, and sensitive operations
+- File upload handling — type validation, storage, and execution risks
+- Secrets management — keys, tokens, credentials
+- Encryption — in transit and at rest
+- Account takeover vectors
+- Privilege escalation paths
+- Data leakage risks — responses, logs, and error messages
+
+Do not stop at obvious findings. Actively pursue edge cases and non-obvious attack paths. Implement fixes wherever possible.
+
+---
+
+### PHASE 5 — Data Integrity Audit
+
+Verify that the application produces accurate and trustworthy results under all conditions.
+
+Validate:
+
+- All calculations, tallies, and derived values
+- Reward logic, balance logic, and transaction logic
+- Displayed information versus underlying data
+- API response accuracy and consistency
+- Real-time data update behaviour
+- Race condition handling — concurrent requests and simultaneous actions
+- Duplicate action prevention — double-submits, replayed requests
+
+The application must never produce misleading, incorrect, or inconsistent results. Any discrepancy is a critical issue.
+
+---
+
+### PHASE 6 — Logic and Resilience Audit
+
+Walk through every workflow. For each, ask:
+
+- What happens if the user clicks faster than expected?
+- What happens if a network request fails midway?
+- What happens if the user refreshes the page during an operation?
+- What happens if data is delayed or loads slowly?
+- What happens if invalid or malformed input is submitted?
+- What happens if multiple users perform the same action simultaneously?
+- What happens if an external dependency is unavailable?
+- What happens if a session expires mid-workflow?
+
+Identify every logical failure point before real users do.
+
+---
+
+### PHASE 7 — Abuse Resistance Audit
+
+Actively attempt to abuse the system.
+
+Test for:
+
+- Reward farming and duplicate reward exploitation
+- Referral system abuse
+- Automation and bot-driven abuse
+- Spam and fake account creation
+- Replay attacks on sensitive operations
+- API endpoint abuse and scraping
+- Workflow bypass attempts
+
+Identify every exploitable path and implement appropriate protections and countermeasures.
+
+---
+
+### PHASE 8 — Performance Audit
+
+Evaluate application performance across all layers.
+
+Assess:
+
+- Page load speed and time-to-interactive
+- Database query efficiency — indexes, N+1 queries, slow queries
+- API response times under load
+- Caching strategy — what is cached, for how long, and invalidation
+- Frontend bundle size and asset optimisation
+- Memory usage and leak risks
+- Network request count and payload sizes
+
+Eliminate bottlenecks. Document performance baselines.
+
+---
+
+### PHASE 9 — Accessibility Audit
+
+Verify the application is usable by all users.
+
+Confirm:
+
+- Full keyboard navigation is functional throughout
+- Screen reader compatibility with appropriate ARIA roles and labels
+- Correct semantic HTML structure
+- Sufficient colour contrast across all states (WCAG AA minimum)
+- All forms are labelled, described, and accessible
+- All error messages are clear, specific, and actionable
+
+---
+
+### PHASE 10 — Quality Assurance Sweep
+
+Test exhaustively. The happy path is not sufficient.
+
+Cover:
+
+- Every page and view
+- Every interactive element — buttons, links, toggles, modals
+- Every form — submission, validation, error, and success states
+- Every workflow — from initiation to completion
+- Every API endpoint
+- Every edge case identifiable from the specification
+- Every error state and failure mode
+- Every loading and skeleton state
+- Every empty and zero-data state
+
+---
+
+### PHASE 11 — Maintainability Audit
+
+Review the codebase for long-term health.
+
+Remove:
+
+- Dead code and unreachable branches
+- Duplicate logic and redundant components
+- Unused dependencies and imports
+- Temporary workarounds or TODOs left in place
+- Debugging artifacts and console output
+
+Improve:
+
+- Architecture clarity and separation of concerns
+- Code readability and naming consistency
+- Cross-codebase consistency in patterns and conventions
+- Scalability of the current structure
+
+---
+
+### FINAL DELIVERABLE
+
+Produce a structured report containing:
+
+1. **Production Readiness Score** — 0 to 100, with clear justification
+2. **Critical Blockers** — issues that must be resolved before any deployment
+3. **High-Priority Improvements** — significant issues that are not absolute blockers
+4. **Security Findings** — ranked by severity
+5. **Logic and Data Integrity Findings**
+6. **Missing Features and Product Gaps**
+7. **Trust and Credibility Issues**
+8. **Recommended Fixes** — specific, actionable, and ordered by priority
+9. **Go / No-Go Deployment Decision** — with explicit reasoning
+
+Do not issue a go recommendation until all critical issues have been identified and addressed. Do not inflate the score. Accuracy of this assessment is more valuable than optimism.
+
+---
+---
+
+## PROMPT 2 — Score Elevation: From Audit Findings to 90+ Production Readiness
+
+---
+
+You have completed the pre-launch audit and assigned a production readiness score.
+
+Your previous objective was to identify problems.
+
+Your current objective is different and more demanding: **raise the production readiness score to a minimum of 90/100 — and target 95+ — through substantive, implemented improvements.**
+
+Do not focus on cosmetic or surface-level changes. Focus exclusively on improvements that meaningfully increase real-world reliability, security, trustworthiness, scalability, maintainability, user retention, observability, and operational readiness.
+
+---
+
+### STEP 1 — Re-Evaluation Before Action
+
+Before making any changes, produce an honest current-state assessment.
+
+- Recalculate the production readiness score with fresh eyes
+- Explain precisely why the score has not yet reached 90+
+- Enumerate every remaining weakness
+- Rank weaknesses by real-world impact — lead with the highest-damage items
+
+Do not begin implementation until this assessment is complete and documented.
+
+---
+
+### STEP 2 — Missing Feature Discovery
+
+Act as a senior cross-functional product team — product, engineering, security, operations, and support — reviewing the application together.
+
+Identify features that should exist but currently do not.
+
+Go beyond the existing specification. Ask:
+
+- What would experienced users of similar products expect as standard?
+- What would a support team need to resolve issues efficiently?
+- What would administrators need to manage and oversee the platform?
+- What would an operations team need to run, monitor, and recover the system?
+- What would a security team need to detect and respond to incidents?
+- What would a developer maintaining this codebase need six months from now?
+
+Produce a prioritised list of missing features with impact justification for each.
+
+---
+
+### STEP 3 — Production Infrastructure
+
+Evaluate whether the application has a complete operational foundation.
+
+Implement anything that is absent or insufficient:
+
+- Application health check endpoints
+- Uptime monitoring integration
+- Real-time error tracking and alerting
+- Application performance monitoring (APM)
+- Structured audit logging — user actions, system events, security events
+- Security event logging — failed authentications, permission violations, anomalies
+- Activity logging — for both operational diagnostics and user transparency
+- Deployment safeguards — rollback procedures, canary strategies, environment separation
+- Backup procedures — automated, verified, and tested
+- Recovery procedures — documented, practised, and timed
+
+Infrastructure is not optional for production. Each missing element is a deployment risk.
+
+---
+
+### STEP 4 — Notification System Implementation
+
+Design and implement a complete, reliable notification strategy.
+
+Use **Resend** for transactional email delivery where applicable.
+
+Implement the following notification types:
+
+- Account email verification
+- Password reset with secure, time-limited tokens
+- Login activity alerts for new devices or locations
+- Security alerts — suspicious or unexpected account activity
+- Reward and achievement notifications
+- Transaction and balance change notifications
+- Account configuration change confirmations
+- Referral activity notifications
+- Support communication notifications
+- Administrative alerts for platform-level events
+
+For every notification type, ensure:
+
+- Delivery failure handling with retry logic
+- Delivery logging for auditability
+- Monitoring for failed or bounced sends
+- Professionally designed, on-brand email templates
+- Clear, plain-language content the recipient can act on
+
+---
+
+### STEP 5 — User Trust and Transparency Improvements
+
+Identify every point in the user experience where confidence, clarity, or transparency is lacking.
+
+Improve:
+
+- Onboarding flow — set clear expectations from the first interaction
+- Account transparency — users should always have clear visibility of their status
+- Reward and balance transparency — show how values are calculated, not just the result
+- Transaction visibility — full, accessible history of all user-relevant events
+- Notification clarity — every notification must explain what happened, why, and what to do next
+- User feedback mechanisms — structured ways for users to report problems and get responses
+
+After every meaningful user action, the user must understand:
+
+- What just happened
+- Why it happened
+- What happens next and when
+
+---
+
+### STEP 6 — Security Hardening
+
+Assume this application reaches significant user numbers within days of launch.
+
+Implement additional, proactive security controls:
+
+- Rate limiting on all sensitive endpoints — authentication, registration, password reset, API
+- Abuse detection — pattern recognition on unusual request volumes or sequences
+- Fraud detection — anomaly detection on financial or reward-generating actions
+- Suspicious activity monitoring with automated alerting
+- Account lockout and progressive backoff after repeated failed attempts
+- Session integrity protections — rotation, binding, and expiry
+- API protection — token validation, scope enforcement, and abuse throttling
+- Comprehensive audit trails — tamper-evident logs of all security-relevant events
+
+Security hardening beyond minimum requirements is a competitive and legal necessity, not optional.
+
+---
+
+### STEP 7 — Scalability Review
+
+Model system behaviour across four load scenarios:
+
+- **100 users** — Does the application work correctly?
+- **1,000 users** — Does performance remain acceptable?
+- **10,000 users** — Where do bottlenecks first appear?
+- **100,000 users** — What architectural changes become necessary?
+
+For each scenario, identify:
+
+- Database bottlenecks — query performance, connection pooling, read replicas
+- API bottlenecks — throughput limits, caching gaps, synchronous dependencies
+- Storage bottlenecks — file systems, CDN reliance, object storage needs
+- Architectural constraints — monolithic limits, service boundaries, queue needs
+
+Document all scaling risks and provide a prioritised architectural roadmap.
+
+---
+
+### STEP 8 — Failure Mode Analysis
+
+For every critical workflow, perform explicit failure mode analysis.
+
+For each workflow, answer:
+
+- What happens if the database is unavailable?
+- What happens if the API is unreachable or returns an error?
+- What happens if email delivery fails completely?
+- What happens if a third-party dependency is degraded or down?
+- What happens if a request times out at any layer?
+- What happens if a duplicate or replayed request arrives?
+- What happens if a user attempts to exploit the workflow?
+
+For every identified failure mode:
+
+- Implement a graceful degradation path where possible
+- Ensure the user receives a clear, honest, and actionable error response
+- Ensure the failure is logged with sufficient context for diagnosis
+
+---
+
+### STEP 9 — Competitive Benchmarking
+
+Evaluate this application against mature commercial products in the same category.
+
+Identify gaps in:
+
+- Core feature completeness
+- Operational tooling and admin capabilities
+- User experience polish and consistency
+- Security and trust mechanisms
+- Onboarding and retention mechanics
+
+Implement the highest-value additions that close meaningful competitive gaps. Document items deferred for future iterations with clear rationale.
+
+---
+
+### STEP 10 — Final Optimisation Pass
+
+Perform a final sweep of the entire application for residual issues.
+
+Search for and resolve:
+
+- Accumulated technical debt in critical paths
+- Unfinished or partially-implemented workflows
+- Hidden bugs in edge cases not covered by the initial audit
+- Inconsistent behaviour between similar features or flows
+- Weak or vague error handling
+- Poor recovery paths after failures
+
+Refactor where improvements are material. Do not refactor for style alone.
+
+---
+
+### FINAL DELIVERABLES
+
+Produce a complete post-improvement report containing:
+
+1. **Updated Production Readiness Score** — with detailed justification for each point gained or not yet gained
+2. **Features Added** — with description and impact of each
+3. **Security Improvements Implemented** — with severity and coverage
+4. **Infrastructure Improvements Implemented**
+5. **User Trust Improvements Implemented**
+6. **Scalability Improvements Implemented**
+7. **Remaining Weaknesses** — items not yet resolved, with honest assessment of risk
+8. **Exact Steps to Reach 100/100** — specific, actionable, and sequenced
+9. **Final Deployment Recommendation** — go, conditional go, or no-go — with explicit reasoning
+
+Do not stop after finding issues. Implement fixes. Re-evaluate. Repeat until no high-impact opportunities remain unaddressed.
+
+The target is not a report about a better application. The target is a better application.

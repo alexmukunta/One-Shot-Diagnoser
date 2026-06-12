@@ -10,6 +10,7 @@ import {
   ChevronDown,
   LogOut,
   User,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,7 @@ const NAV = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { signOut } = useClerk();
+  const { signOut, openUserProfile } = useClerk();
   const { user } = useUser();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -78,7 +79,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-sidebar-accent text-sidebar-foreground text-sm transition-colors"
           >
             <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-              <User className="w-3.5 h-3.5 text-primary" />
+              {user?.imageUrl ? (
+                <img
+                  src={user.imageUrl}
+                  alt="avatar"
+                  className="w-6 h-6 rounded-full object-cover"
+                />
+              ) : (
+                <User className="w-3.5 h-3.5 text-primary" />
+              )}
             </div>
             <span className="flex-1 text-left truncate text-xs">
               {user?.primaryEmailAddress?.emailAddress ?? user?.username ?? "Account"}
@@ -87,6 +96,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
           {userMenuOpen && (
             <div className="mt-1 bg-popover border border-popover-border rounded shadow-lg overflow-hidden">
+              <button
+                data-testid="manage-account-button"
+                onClick={() => { openUserProfile(); setUserMenuOpen(false); }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                Manage account
+              </button>
               <button
                 data-testid="sign-out-button"
                 onClick={() => signOut({ redirectUrl: basePath || "/" })}
