@@ -487,6 +487,41 @@ export interface TagAssignment {
   tagId: string;
 }
 
+export type CronMonitorStatus = typeof CronMonitorStatus[keyof typeof CronMonitorStatus];
+
+
+export const CronMonitorStatus = {
+  up: 'up',
+  down: 'down',
+  pending: 'pending',
+} as const;
+
+export interface CronMonitor {
+  id: string;
+  name: string;
+  slug: string;
+  schedule?: string | null;
+  expectedIntervalSeconds: number;
+  gracePeriodSeconds: number;
+  status: CronMonitorStatus;
+  lastPingAt?: string | null;
+  isActive: boolean;
+  notifyOnDown: boolean;
+  createdAt: string;
+}
+
+export interface CronMonitorInput {
+  /** @minLength 1 */
+  name: string;
+  schedule?: string;
+  /** @minimum 60 */
+  expectedIntervalSeconds: number;
+  gracePeriodSeconds?: number;
+  notifyOnDown?: boolean;
+}
+
+export type ListCronMonitorsResponse = CronMonitor[];
+
 export type ListMonitorsParams = {
 /**
  * Filter by tag name(s), comma-separated

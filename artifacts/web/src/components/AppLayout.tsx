@@ -11,6 +11,7 @@ import {
   LogOut,
   User,
   Settings,
+  Timer,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/monitors", label: "Monitors", icon: Activity },
   { href: "/incidents", label: "Incidents", icon: AlertTriangle },
+  { href: "/cron-monitors", label: "Cron Monitors", icon: Timer },
   { href: "/alert-channels", label: "Alert Channels", icon: Bell },
   { href: "/status-pages", label: "Status Pages", icon: Globe },
   { href: "/diagnose", label: "Diagnose URL", icon: Zap },

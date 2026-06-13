@@ -8,7 +8,7 @@ import {
   monitorsTable,
   monitorChecksTable,
 } from "@workspace/db";
-import { dispatchAlerts } from "../lib/notifier";
+import { dispatchAlerts, sendTestNotification } from "../lib/notifier";
 import { runMonitorCheck } from "../lib/runCheck";
 import {
   CreateAlertChannelBody,
@@ -183,9 +183,15 @@ router.post(
       )
       .limit(1);
 
+    const channelObj = {
+      id: String(channel.id),
+      type: channel.type,
+      name: channel.name,
+      config: channel.config as Record<string, unknown>,
+    };
+
     try {
       if (attachment) {
-        // Run a live check so the test notification contains real data
         const monitor = attachment.monitor;
         logger.info(
           { channelId: channel.id, monitorId: monitor.id },
@@ -204,38 +210,25 @@ router.post(
         const checkStatus = latestCheck?.status ?? "up";
         const event = checkStatus === "down" || checkStatus === "degraded" ? "down" : "recovery";
 
-        await dispatchAlerts(
-          [{
-            id: String(channel.id),
-            type: channel.type,
-            name: channel.name,
-            config: channel.config as Record<string, unknown>,
-          }],
+        await sendTestNotification(
+          channelObj,
           { id: String(monitor.id), name: monitor.name, url: monitor.url },
-          event,
           {
             id: latestCheck ? String(latestCheck.id) : "test",
-            rootCause: event === "down"
-              ? (latestCheck?.error ?? "Test alert — monitor is currently down")
-              : `[Test] Monitor is UP · response ${latestCheck?.responseTimeMs ?? "–"}ms`,
+            rootCause:
+              event === "down"
+                ? (latestCheck?.error ?? "Test alert — monitor is currently down")
+                : `[Test] Monitor is UP · response ${latestCheck?.responseTimeMs ?? "–"}ms`,
             startedAt: latestCheck?.checkedAt ?? new Date(),
           },
         );
       } else {
-        // No monitors attached — send a clearly-labelled demo alert
-        await dispatchAlerts(
-          [{
-            id: String(channel.id),
-            type: channel.type,
-            name: channel.name,
-            config: channel.config as Record<string, unknown>,
-          }],
-          { id: "0", name: "Example Monitor (no monitors attached)", url: "https://example.com" },
-          "down",
+        await sendTestNotification(
+          channelObj,
+          { id: "0", name: "Example Monitor", url: "https://example.com" },
           {
             id: "0",
-            rootCause:
-              "This is a test alert from One Shot Diagnoser. Attach this channel to a monitor to receive real check data.",
+            rootCause: "This is a test alert from One Shot Diagnoser. Attach this channel to a monitor to receive real check data.",
             startedAt: new Date(),
           },
         );
@@ -244,7 +237,7 @@ router.post(
       res.json(TestAlertChannelResponse.parse({ success: true, message: "Test notification sent" }));
     } catch (err) {
       logger.error({ err, channelId: channel.id }, "Alert channel test failed");
-      res.status(500).json(
+      res.json(
         TestAlertChannelResponse.parse({ success: false, message: (err as Error).message })
       );
     }

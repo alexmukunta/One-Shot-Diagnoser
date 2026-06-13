@@ -296,6 +296,44 @@ async function notifyEmail(
   }, `email:${toEmail}`);
 }
 
+export async function sendTestNotification(
+  channel: AlertChannel,
+  monitor: MonitorInfo,
+  incident: IncidentInfo,
+): Promise<void> {
+  const config = channel.config as Record<string, string>;
+  switch (channel.type) {
+    case "email": {
+      const email = config["email"];
+      if (!email) throw new Error("Email channel has no address configured");
+      if (!resendClient) {
+        throw new Error(
+          "Email delivery is not configured — set the RESEND_API_KEY environment variable to enable email alerts",
+        );
+      }
+      await notifyEmail(email, monitor, "down", incident);
+      break;
+    }
+    case "discord": {
+      const url = config["url"] ?? config["webhookUrl"];
+      if (!url) throw new Error("Discord channel has no webhook URL configured");
+      await notifyDiscord(url, monitor, "down", incident);
+      break;
+    }
+    case "slack": {
+      const url = config["url"] ?? config["webhookUrl"];
+      if (!url) throw new Error("Slack channel has no webhook URL configured");
+      await notifySlack(url, monitor, "down", incident);
+      break;
+    }
+    default: {
+      const url = config["url"] ?? config["webhookUrl"];
+      if (!url) throw new Error("Webhook channel has no URL configured");
+      await notifyWebhook(url, monitor, "down", incident, config["secret"]);
+    }
+  }
+}
+
 export async function dispatchAlerts(
   channels: AlertChannel[],
   monitor: MonitorInfo,

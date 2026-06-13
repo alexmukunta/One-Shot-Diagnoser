@@ -22,6 +22,7 @@ import AlertChannelsPage from "@/pages/alert-channels";
 import StatusPagesPage from "@/pages/status-pages";
 import PublicStatusPage from "@/pages/status-public";
 import DiagnosePage from "@/pages/diagnose";
+import CronMonitorsPage from "@/pages/cron-monitors";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -36,22 +37,57 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const clerkAppearance = {
   baseTheme: shadcn,
-  layout: { cssLayerName: "clerk" },
   variables: {
-    colorBackground: "hsl(222, 47%, 6%)",
-    colorInputBackground: "hsl(222, 40%, 9%)",
-    colorInputText: "hsl(215, 20%, 90%)",
-    colorText: "hsl(215, 20%, 90%)",
-    colorTextSecondary: "hsl(215, 15%, 55%)",
-    colorPrimary: "hsl(199, 89%, 48%)",
-    colorDanger: "hsl(0, 72%, 51%)",
+    colorBackground: "#0f1623",
+    colorInputBackground: "#1e2d42",
+    colorInputText: "#e8edf5",
+    colorText: "#e8edf5",
+    colorTextSecondary: "#8fa3be",
+    colorPrimary: "#0ea5e9",
+    colorDanger: "#ef4444",
+    colorNeutral: "#8fa3be",
     borderRadius: "0.375rem",
     fontFamily: "Inter, system-ui, sans-serif",
   },
   elements: {
-    card: "bg-[hsl(222,40%,8%)] border border-[hsl(222,30%,14%)] shadow-2xl",
-    formButtonPrimary: "bg-[hsl(199,89%,48%)] hover:bg-[hsl(199,89%,43%)] text-white",
-    footerActionLink: "text-[hsl(199,89%,48%)]",
+    card: "shadow-2xl",
+    headerTitle: "!text-[#e8edf5]",
+    headerSubtitle: "!text-[#8fa3be]",
+    formButtonPrimary:
+      "!bg-[#0ea5e9] hover:!bg-[#0284c7] !text-white !font-medium !shadow-none",
+    formButtonSecondary:
+      "!bg-[#1e2d42] !border !border-[#2e4060] !text-[#d1dce8] hover:!bg-[#243452]",
+    formFieldInput:
+      "!bg-[#1e2d42] !border !border-[#2e4060] !text-[#e8edf5] placeholder:!text-[#5a7090] focus:!border-[#0ea5e9]",
+    formFieldLabel: "!text-[#8fa3be] !font-medium",
+    formFieldHintText: "!text-[#6a859e]",
+    socialButtonsBlockButton:
+      "!bg-[#1e2d42] !border !border-[#2e4060] !text-[#d1dce8] hover:!bg-[#243452] hover:!border-[#3a5070]",
+    socialButtonsBlockButtonText: "!text-[#d1dce8] !font-medium",
+    dividerLine: "!bg-[#2e4060]",
+    dividerText: "!text-[#5a7090]",
+    footerActionLink: "!text-[#0ea5e9] hover:!text-[#38bdf8]",
+    footerActionText: "!text-[#6a859e]",
+    identityPreviewText: "!text-[#d1dce8]",
+    identityPreviewEditButtonIcon: "!text-[#0ea5e9]",
+    otpCodeFieldInput:
+      "!bg-[#1e2d42] !border !border-[#2e4060] !text-[#e8edf5] focus:!border-[#0ea5e9]",
+    navbarButton:
+      "!text-[#8fa3be] hover:!text-[#d1dce8] hover:!bg-[#1e2d42]",
+    navbarButtonIcon: "!text-[#8fa3be]",
+    profileSectionTitleText: "!text-[#d1dce8] !font-medium",
+    profileSectionContent: "!border-t !border-[#2e4060]",
+    accordionTriggerButton: "!text-[#d1dce8] hover:!bg-[#1e2d42]",
+    badge: "!text-[#d1dce8] !border-[#2e4060]",
+    menuList: "!border !border-[#2e4060]",
+    menuItem: "!text-[#d1dce8] hover:!bg-[#1e2d42]",
+    actionCard: "!border !border-[#2e4060]",
+    pageScrollBox: "!bg-[#0f1623]",
+    userPreviewMainIdentifier: "!text-[#e8edf5]",
+    userPreviewSecondaryIdentifier: "!text-[#8fa3be]",
+    formResendCodeLink: "!text-[#0ea5e9]",
+    alternativeMethodsBlockButton:
+      "!bg-[#1e2d42] !border !border-[#2e4060] !text-[#d1dce8] hover:!bg-[#243452]",
   },
 };
 
@@ -106,6 +142,7 @@ function Router() {
       <Route path="/incidents" component={() => <ProtectedRoute component={IncidentsPage} />} />
       <Route path="/alert-channels" component={() => <ProtectedRoute component={AlertChannelsPage} />} />
       <Route path="/status-pages" component={() => <ProtectedRoute component={StatusPagesPage} />} />
+      <Route path="/cron-monitors" component={() => <ProtectedRoute component={CronMonitorsPage} />} />
       <Route path="/diagnose" component={() => <ProtectedRoute component={DiagnosePage} />} />
       <Route component={NotFound} />
     </Switch>

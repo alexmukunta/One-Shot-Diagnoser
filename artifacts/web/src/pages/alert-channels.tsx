@@ -99,8 +99,14 @@ export default function AlertChannelsPage() {
 
   const test = useTestAlertChannel({
     mutation: {
-      onSuccess: () => toast({ title: "Test notification sent" }),
-      onError: () => toast({ title: "Test failed", variant: "destructive" }),
+      onSuccess: (data) => {
+        if (data.success) {
+          toast({ title: "Test notification sent ✓" });
+        } else {
+          toast({ title: data.message || "Test failed", variant: "destructive" });
+        }
+      },
+      onError: () => toast({ title: "Test failed — network error", variant: "destructive" }),
     },
   });
 

@@ -5,3 +5,4 @@ export * from "./alert_channels";
 export * from "./monitor_alert_channels";
 export * from "./tags";
 export * from "./status_pages";
+export * from "./cron_monitors";

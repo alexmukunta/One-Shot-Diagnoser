@@ -26,6 +26,8 @@ tags:
     description: Monitor tags
   - name: dashboard
     description: Dashboard overview
+  - name: cronMonitors
+    description: Cron job heartbeat monitors
 
 paths:
   /healthz:
@@ -836,6 +838,76 @@ paths:
         "204":
           description: Deleted
 
+  # ─── Cron Monitors ───────────────────────────────────────────────────────────
+  /cron-monitors:
+    get:
+      operationId: listCronMonitors
+      tags: [cronMonitors]
+      summary: List cron monitors
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: List of cron monitors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCronMonitorsResponse"
+    post:
+      operationId: createCronMonitor
+      tags: [cronMonitors]
+      summary: Create a cron monitor
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CronMonitorInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronMonitor"
+  /cron-monitors/{id}:
+    get:
+      operationId: getCronMonitor
+      tags: [cronMonitors]
+      summary: Get a cron monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cron monitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronMonitor"
+    delete:
+      operationId: deleteCronMonitor
+      tags: [cronMonitors]
+      summary: Delete a cron monitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
 components:
   securitySchemes:
     clerkAuth:
@@ -1508,3 +1580,60 @@ components:
       properties:
         tagId:
           type: string
+
+    # ─── Cron Monitors ─────────────────────────────────────────────────────────
+    CronMonitor:
+      type: object
+      required: [id, name, slug, expectedIntervalSeconds, gracePeriodSeconds, status, isActive, notifyOnDown, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        schedule:
+          type: string
+          nullable: true
+        expectedIntervalSeconds:
+          type: integer
+        gracePeriodSeconds:
+          type: integer
+        status:
+          type: string
+          enum: [up, down, pending]
+        lastPingAt:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+        notifyOnDown:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    CronMonitorInput:
+      type: object
+      required: [name, expectedIntervalSeconds]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        schedule:
+          type: string
+        expectedIntervalSeconds:
+          type: integer
+          minimum: 60
+        gracePeriodSeconds:
+          type: integer
+          default: 300
+        notifyOnDown:
+          type: boolean
+          default: true
+
+    ListCronMonitorsResponse:
+      type: array
+      items:
+        $ref: "#/components/schemas/CronMonitor"

@@ -856,3 +856,70 @@ export const DeleteTagParams = zod.object({
 })
 
 
+/**
+ * @summary List cron monitors
+ */
+export const ListCronMonitorsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "schedule": zod.string().nullish(),
+  "expectedIntervalSeconds": zod.number(),
+  "gracePeriodSeconds": zod.number(),
+  "status": zod.enum(['up', 'down', 'pending']),
+  "lastPingAt": zod.coerce.date().nullish(),
+  "isActive": zod.boolean(),
+  "notifyOnDown": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListCronMonitorsResponse = zod.array(ListCronMonitorsResponseItem)
+
+
+/**
+ * @summary Create a cron monitor
+ */
+
+export const createCronMonitorBodyExpectedIntervalSecondsMin = 60;
+
+export const createCronMonitorBodyGracePeriodSecondsDefault = 300;
+export const createCronMonitorBodyNotifyOnDownDefault = true;
+
+export const CreateCronMonitorBody = zod.object({
+  "name": zod.string().min(1),
+  "schedule": zod.string().optional(),
+  "expectedIntervalSeconds": zod.number().min(createCronMonitorBodyExpectedIntervalSecondsMin),
+  "gracePeriodSeconds": zod.number().default(createCronMonitorBodyGracePeriodSecondsDefault),
+  "notifyOnDown": zod.boolean().default(createCronMonitorBodyNotifyOnDownDefault)
+})
+
+
+/**
+ * @summary Get a cron monitor
+ */
+export const GetCronMonitorParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetCronMonitorResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "schedule": zod.string().nullish(),
+  "expectedIntervalSeconds": zod.number(),
+  "gracePeriodSeconds": zod.number(),
+  "status": zod.enum(['up', 'down', 'pending']),
+  "lastPingAt": zod.coerce.date().nullish(),
+  "isActive": zod.boolean(),
+  "notifyOnDown": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a cron monitor
+ */
+export const DeleteCronMonitorParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+

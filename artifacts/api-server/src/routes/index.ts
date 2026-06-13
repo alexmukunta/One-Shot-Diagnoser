@@ -7,6 +7,7 @@ import incidentsRouter from "./incidents";
 import alertChannelsRouter from "./alert-channels";
 import statusPagesRouter from "./status-pages";
 import tagsRouter from "./tags";
+import cronMonitorsRouter from "./cron-monitors";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(incidentsRouter);
 router.use(alertChannelsRouter);
 router.use(statusPagesRouter);
 router.use(tagsRouter);
+router.use(cronMonitorsRouter);
 
 export default router;

@@ -24,6 +24,8 @@ import type {
   AlertChannel,
   AlertChannelInput,
   AlertChannelUpdate,
+  CronMonitor,
+  CronMonitorInput,
   Dashboard,
   DiagnoseInput,
   DiagnoseResult,
@@ -32,6 +34,7 @@ import type {
   HealthStatus,
   Incident,
   IncidentPage,
+  ListCronMonitorsResponse,
   ListIncidentsParams,
   ListMonitorAlertChannelsResponse,
   ListMonitorChecksParams,
@@ -2830,5 +2833,300 @@ export const useDeleteTag = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteTagMutationOptions(options));
+    }
+
+export const getListCronMonitorsUrl = () => {
+
+
+
+
+  return `/api/cron-monitors`
+}
+
+/**
+ * @summary List cron monitors
+ */
+export const listCronMonitors = async ( options?: RequestInit): Promise<ListCronMonitorsResponse> => {
+
+  return customFetch<ListCronMonitorsResponse>(getListCronMonitorsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCronMonitorsQueryKey = () => {
+    return [
+    `/api/cron-monitors`
+    ] as const;
+    }
+
+
+export const getListCronMonitorsQueryOptions = <TData = Awaited<ReturnType<typeof listCronMonitors>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCronMonitors>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCronMonitorsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCronMonitors>>> = ({ signal }) => listCronMonitors({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCronMonitors>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCronMonitorsQueryResult = NonNullable<Awaited<ReturnType<typeof listCronMonitors>>>
+export type ListCronMonitorsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List cron monitors
+ */
+
+export function useListCronMonitors<TData = Awaited<ReturnType<typeof listCronMonitors>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCronMonitors>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCronMonitorsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateCronMonitorUrl = () => {
+
+
+
+
+  return `/api/cron-monitors`
+}
+
+/**
+ * @summary Create a cron monitor
+ */
+export const createCronMonitor = async (cronMonitorInput: CronMonitorInput, options?: RequestInit): Promise<CronMonitor> => {
+
+  return customFetch<CronMonitor>(getCreateCronMonitorUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      cronMonitorInput,)
+  }
+);}
+
+
+
+
+export const getCreateCronMonitorMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCronMonitor>>, TError,{data: BodyType<CronMonitorInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCronMonitor>>, TError,{data: BodyType<CronMonitorInput>}, TContext> => {
+
+const mutationKey = ['createCronMonitor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCronMonitor>>, {data: BodyType<CronMonitorInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCronMonitor(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCronMonitorMutationResult = NonNullable<Awaited<ReturnType<typeof createCronMonitor>>>
+    export type CreateCronMonitorMutationBody = BodyType<CronMonitorInput>
+    export type CreateCronMonitorMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a cron monitor
+ */
+export const useCreateCronMonitor = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCronMonitor>>, TError,{data: BodyType<CronMonitorInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCronMonitor>>,
+        TError,
+        {data: BodyType<CronMonitorInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCronMonitorMutationOptions(options));
+    }
+
+export const getGetCronMonitorUrl = (id: string,) => {
+
+
+
+
+  return `/api/cron-monitors/${id}`
+}
+
+/**
+ * @summary Get a cron monitor
+ */
+export const getCronMonitor = async (id: string, options?: RequestInit): Promise<CronMonitor> => {
+
+  return customFetch<CronMonitor>(getGetCronMonitorUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCronMonitorQueryKey = (id: string,) => {
+    return [
+    `/api/cron-monitors/${id}`
+    ] as const;
+    }
+
+
+export const getGetCronMonitorQueryOptions = <TData = Awaited<ReturnType<typeof getCronMonitor>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCronMonitor>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCronMonitorQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCronMonitor>>> = ({ signal }) => getCronMonitor(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCronMonitor>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCronMonitorQueryResult = NonNullable<Awaited<ReturnType<typeof getCronMonitor>>>
+export type GetCronMonitorQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a cron monitor
+ */
+
+export function useGetCronMonitor<TData = Awaited<ReturnType<typeof getCronMonitor>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCronMonitor>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCronMonitorQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getDeleteCronMonitorUrl = (id: string,) => {
+
+
+
+
+  return `/api/cron-monitors/${id}`
+}
+
+/**
+ * @summary Delete a cron monitor
+ */
+export const deleteCronMonitor = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteCronMonitorUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCronMonitorMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCronMonitor>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCronMonitor>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteCronMonitor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCronMonitor>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCronMonitor(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCronMonitorMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCronMonitor>>>
+
+    export type DeleteCronMonitorMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a cron monitor
+ */
+export const useDeleteCronMonitor = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCronMonitor>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCronMonitor>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteCronMonitorMutationOptions(options));
     }
 

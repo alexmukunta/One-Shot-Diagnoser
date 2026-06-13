@@ -1,7 +1,8 @@
-import { eq, and, lte, isNull, or, sql } from "drizzle-orm";
+import { eq, and, isNull, or, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { monitorsTable } from "@workspace/db";
 import { runMonitorCheck } from "./runCheck";
+import { checkMissedCronPings } from "../routes/cron-monitors";
 import { logger } from "./logger";
 
 const TICK_INTERVAL_MS = 30_000;
@@ -30,6 +31,8 @@ async function tick(): Promise<void> {
       logger.info({ count: due.length }, "Scheduler: running due checks");
       await Promise.allSettled(due.map((m) => runMonitorCheck(m.id)));
     }
+
+    await checkMissedCronPings();
   } catch (err) {
     logger.error({ err }, "Scheduler tick error");
   } finally {
