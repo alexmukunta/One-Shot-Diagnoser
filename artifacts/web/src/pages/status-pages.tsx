@@ -33,13 +33,15 @@ export default function StatusPagesPage() {
   const [editMonitors, setEditMonitors] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const { data: pages, isLoading } = useListStatusPages({
+  const { data: pagesData, isLoading } = useListStatusPages({
     query: { queryKey: getListStatusPagesQueryKey() },
   });
+  const pageList = Array.isArray(pagesData) ? pagesData : [];
 
-  const { data: monitors } = useListMonitors(undefined, {
+  const { data: monitorsData } = useListMonitors(undefined, {
     query: { queryKey: getListMonitorsQueryKey() },
   });
+  const monitorList = Array.isArray(monitorsData) ? monitorsData : [];
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListStatusPagesQueryKey() });
 
@@ -143,11 +145,11 @@ export default function StatusPagesPage() {
                     data-testid="input-description"
                   />
                 </div>
-                {monitors && monitors.length > 0 && (
+                {monitorList && monitorList?.length > 0 && (
                   <div>
                     <Label>Monitors to display</Label>
                     <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
-                      {monitors.map((m) => (
+                      {monitorList?.map((m) => (
                         <div key={m.id} className="flex items-center gap-2">
                           <Checkbox
                             id={`monitor-${m.id}`}
@@ -178,7 +180,7 @@ export default function StatusPagesPage() {
           <div className="space-y-2">
             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
           </div>
-        ) : !pages?.length ? (
+        ) : !pageList?.length ? (
           <div className="bg-card border border-card-border rounded-lg p-12 text-center">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Globe className="w-6 h-6 text-primary" />
@@ -190,7 +192,7 @@ export default function StatusPagesPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {pages.map((page) => (
+            {pageList?.map((page) => (
               <div
                 key={page.id}
                 data-testid={`status-page-row-${page.id}`}
@@ -262,11 +264,11 @@ export default function StatusPagesPage() {
                 data-testid="input-edit-description"
               />
             </div>
-            {monitors && monitors.length > 0 && (
+            {monitorList && monitorList?.length > 0 && (
               <div>
                 <Label>Monitors to display</Label>
                 <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
-                  {monitors.map((m) => (
+                  {monitorList?.map((m) => (
                     <div key={m.id} className="flex items-center gap-2">
                       <Checkbox
                         id={`edit-monitor-${m.id}`}

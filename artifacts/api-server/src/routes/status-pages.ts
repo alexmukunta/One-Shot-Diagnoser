@@ -371,6 +371,8 @@ router.get("/public/status/:slug", async (req, res): Promise<void> => {
             monitorName: monitorsTable.name,
             startedAt: incidentsTable.startedAt,
             rootCause: incidentsTable.rootCause,
+            isAcknowledged: incidentsTable.isAcknowledged,
+            createdAt: incidentsTable.createdAt,
           })
           .from(incidentsTable)
           .innerJoin(monitorsTable, eq(monitorsTable.id, incidentsTable.monitorId))
@@ -403,6 +405,8 @@ router.get("/public/status/:slug", async (req, res): Promise<void> => {
         monitorName: i.monitorName,
         startedAt: i.startedAt,
         rootCause: i.rootCause,
+        isAcknowledged: i.isAcknowledged,
+        createdAt: i.createdAt,
       })),
       recentIncidents: [],
     })

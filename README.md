@@ -11,7 +11,7 @@ A full-stack uptime monitoring SaaS — one-shot URL diagnostics, scheduled moni
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string (provisioned)
-- Required env: `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, `VITE_CLERK_PUBLISHABLE_KEY` — provisioned via Replit-managed Clerk
+- Required env: `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, `VITE_CLERK_PUBLISHABLE_KEY` — provisioned via your Clerk configuration
 - Optional env: `RESEND_API_KEY` (secret) — enables email alert delivery via Resend
 - Optional env: `RESEND_FROM_EMAIL` — sender address for alert emails (default: `onboarding@resend.dev`; override with a verified Resend domain address)
 
@@ -68,7 +68,4 @@ _Populate as you build — explicit user instructions worth remembering across s
 - **Clerk development mode banner**: The orange "Development mode" banner on the sign-in page is expected in dev; it disappears in production.
 - **DB schema push timing**: Always run `pnpm --filter @workspace/db run push` AFTER schema files are in place.
 
-## Pointers
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
-- See the `clerk-auth` skill for Clerk auth customization guidance

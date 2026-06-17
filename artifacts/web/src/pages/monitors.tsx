@@ -15,9 +15,10 @@ export default function MonitorsPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const { data: monitors, isLoading } = useListMonitors(undefined, {
+  const { data, isLoading } = useListMonitors(undefined, {
     query: { queryKey: getListMonitorsQueryKey() },
   });
+  const monitorList = Array.isArray(data) ? data : [];
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListMonitorsQueryKey() });
 
@@ -40,7 +41,7 @@ export default function MonitorsPage() {
           <div>
             <h1 className="text-xl font-semibold">Monitors</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {monitors ? `${monitors.length} monitor${monitors.length !== 1 ? "s" : ""}` : ""}
+              {Array.isArray(data) ? `${data.length} monitor${data.length !== 1 ? "s" : ""}` : ""}
             </p>
           </div>
           <Link href="/monitors/new">
@@ -55,7 +56,7 @@ export default function MonitorsPage() {
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
           </div>
-        ) : monitors?.length === 0 ? (
+        ) : monitorList.length === 0 ? (
           <div className="bg-card border border-card-border rounded-lg p-12 text-center">
             <div className="text-base font-medium mb-2">No monitors yet</div>
             <p className="text-sm text-muted-foreground mb-6">Add your first monitor to start tracking uptime</p>
@@ -78,7 +79,7 @@ export default function MonitorsPage() {
                 </tr>
               </thead>
               <tbody>
-                {monitors?.map((m) => (
+                {monitorList.map((m) => (
                   <tr key={m.id} className="border-b border-border last:border-0 hover:bg-accent/30 transition-colors">
                     <td className="px-4 py-3">
                       <Link

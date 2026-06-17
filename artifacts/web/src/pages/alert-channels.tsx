@@ -71,9 +71,10 @@ export default function AlertChannelsPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<ChannelFormState>(emptyForm());
 
-  const { data: channels, isLoading } = useListAlertChannels({
+  const { data, isLoading } = useListAlertChannels({
     query: { queryKey: getListAlertChannelsQueryKey() },
   });
+  const channelList = Array.isArray(data) ? data : [];
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListAlertChannelsQueryKey() });
 
@@ -271,7 +272,7 @@ export default function AlertChannelsPage() {
           <div className="space-y-2">
             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
           </div>
-        ) : !channels?.length ? (
+        ) : channelList.length === 0 ? (
           <div className="bg-card border border-card-border rounded-lg p-12 text-center">
             <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
               <Mail className="w-5 h-5 text-muted-foreground" />
@@ -283,7 +284,7 @@ export default function AlertChannelsPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {channels.map((ch) => {
+            {channelList.map((ch) => {
               const Icon = TYPE_ICONS[ch.type as ChannelType] ?? Webhook;
               const summary = configSummary(ch.type, ch.config);
               return (

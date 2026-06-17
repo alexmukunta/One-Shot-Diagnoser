@@ -108,7 +108,7 @@ export default function MonitorDetailPage() {
     },
   });
 
-  const chartData = timeseries?.series.map((s) => ({
+  const chartData = timeseries?.series?.map((s) => ({
     time: format(new Date(s.timestamp), period === "24h" ? "HH:mm" : "MMM d"),
     ms: s.responseTimeMs,
   })) ?? [];
@@ -284,7 +284,7 @@ export default function MonitorDetailPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {checks.map((c) => (
+                        {checks?.map((c) => (
                           <tr key={c.id} className="border-b border-border last:border-0">
                             <td className="px-4 py-2.5">
                               <StatusBadge status={c.status === "up" ? "up" : "down"} size="xs" />
@@ -323,7 +323,7 @@ export default function MonitorDetailPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {incidents.map((inc) => (
+                        {incidents?.map((inc) => (
                           <tr key={inc.id} className="border-b border-border last:border-0 hover:bg-accent/30 transition-colors">
                             <td className="px-4 py-2.5">
                               <Link
@@ -367,14 +367,14 @@ export default function MonitorDetailPage() {
                       </Link>
                     </div>
                     {[
-                      ["Method", monitor.method],
-                      ["Interval", `${monitor.intervalSeconds}s`],
-                      ["Timeout", monitor.timeoutSeconds != null ? `${monitor.timeoutSeconds}s` : "—"],
-                      ["Expected status", monitor.expectedStatus?.toString() ?? "—"],
-                      ["Keyword assertion", monitor.keywordAssert ?? "—"],
-                      ["Notify on down", monitor.notifyOnDown ? "Yes" : "No"],
-                      ["Notify on recovery", monitor.notifyOnRecovery ? "Yes" : "No"],
-                      ["Created", format(new Date(monitor.createdAt), "PPP")],
+                      ["Method", monitor?.method],
+                      ["Interval", `${monitor?.intervalSeconds}s`],
+                      ["Timeout", monitor?.timeoutSeconds != null ? `${monitor?.timeoutSeconds}s` : "—"],
+                      ["Expected status", monitor?.expectedStatus?.toString() ?? "—"],
+                      ["Keyword assertion", monitor?.keywordAssert ?? "—"],
+                      ["Notify on down", monitor?.notifyOnDown ? "Yes" : "No"],
+                      ["Notify on recovery", monitor?.notifyOnRecovery ? "Yes" : "No"],
+                      ["Created", monitor?.createdAt ? format(new Date(monitor.createdAt), "PPP") : "—"],
                     ].map(([k, v]) => (
                       <div key={k} className="flex items-center justify-between px-4 py-3 text-sm">
                         <span className="text-muted-foreground">{k}</span>
@@ -403,7 +403,7 @@ export default function MonitorDetailPage() {
                       </div>
                     ) : (
                       <ul className="divide-y divide-border">
-                        {assignedChannels.map((ch) => {
+                        {assignedChannels?.map((ch) => {
                           const Icon = ch.type === "email" ? Mail : ch.type === "discord" || ch.type === "slack" ? MessageSquare : Webhook;
                           return (
                             <li key={ch.id} className="flex items-center justify-between px-4 py-2.5">
@@ -427,14 +427,14 @@ export default function MonitorDetailPage() {
                     )}
 
                     {/* Add channel */}
-                    {unassignedChannels.length > 0 && (
+                    {unassignedChannels?.length > 0 && (
                       <div className="px-4 py-3 border-t border-border flex items-center gap-2">
                         <Select value={addChannelId} onValueChange={setAddChannelId}>
                           <SelectTrigger className="h-8 text-xs flex-1" data-testid="select-add-channel">
                             <SelectValue placeholder="Add a channel…" />
                           </SelectTrigger>
                           <SelectContent>
-                            {unassignedChannels.map((ch) => (
+                            {unassignedChannels?.map((ch) => (
                               <SelectItem key={ch.id} value={ch.id} className="text-xs">
                                 {ch.name} <span className="text-muted-foreground capitalize ml-1">({ch.type})</span>
                               </SelectItem>

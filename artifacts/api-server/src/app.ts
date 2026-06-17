@@ -46,9 +46,14 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
+const allowedOriginsEnv = process.env.ALLOWED_ORIGINS ?? process.env.CORS_ALLOWED_ORIGINS ?? process.env.APP_DOMAINS;
 const allowedOrigins: string[] | true =
-  process.env.NODE_ENV === "production" && process.env.REPLIT_DOMAINS
-    ? process.env.REPLIT_DOMAINS.split(",").map((d) => `https://${d.trim()}`)
+  process.env.NODE_ENV === "production" && allowedOriginsEnv
+    ? allowedOriginsEnv
+        .split(",")
+        .map((domain) => domain.trim())
+        .filter(Boolean)
+        .map((domain) => (domain.includes("://") ? domain : `https://${domain}`))
     : true;
 app.use(cors({ credentials: true, origin: allowedOrigins }));
 app.use(express.json({ limit: "64kb" }));

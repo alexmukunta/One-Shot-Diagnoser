@@ -3,13 +3,15 @@ import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { CookieBanner } from "@/components/CookieBanner";
 import { ClerkProvider, SignIn, SignUp, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
-import { shadcn } from "@clerk/themes";
+import { dark } from "@clerk/themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
+import CookiePolicyPage from "@/pages/cookies";
 import LandingPage from "@/pages/landing";
 import DashboardPage from "@/pages/dashboard";
 import MonitorsPage from "@/pages/monitors";
@@ -36,58 +38,63 @@ const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const clerkAppearance = {
-  baseTheme: shadcn,
+  baseTheme: dark,
   variables: {
     colorBackground: "#0f1623",
     colorInputBackground: "#1e2d42",
-    colorInputText: "#e8edf5",
-    colorText: "#e8edf5",
-    colorTextSecondary: "#8fa3be",
-    colorPrimary: "#0ea5e9",
-    colorDanger: "#ef4444",
-    colorNeutral: "#8fa3be",
+    colorInputText: "#ffffff",
+    colorText: "#ffffff",
+    colorTextSecondary: "#e2e8f0",
+    colorPrimary: "#38bdf8",
+    colorDanger: "#f87171",
+    colorNeutral: "#e2e8f0",
     borderRadius: "0.375rem",
     fontFamily: "Inter, system-ui, sans-serif",
   },
   elements: {
-    card: "shadow-2xl",
-    headerTitle: "!text-[#e8edf5]",
-    headerSubtitle: "!text-[#8fa3be]",
+    card: "shadow-2xl border border-[#2e4060]",
+    headerTitle: "!text-white !font-bold",
+    headerSubtitle: "!text-[#e2e8f0]",
     formButtonPrimary:
-      "!bg-[#0ea5e9] hover:!bg-[#0284c7] !text-white !font-medium !shadow-none",
+      "!bg-[#0ea5e9] hover:!bg-[#38bdf8] !text-white !font-semibold !shadow-none",
     formButtonSecondary:
-      "!bg-[#1e2d42] !border !border-[#2e4060] !text-[#d1dce8] hover:!bg-[#243452]",
+      "!bg-[#1e2d42] !border !border-[#3a5070] !text-[#f8fafc] hover:!bg-[#243452]",
     formFieldInput:
-      "!bg-[#1e2d42] !border !border-[#2e4060] !text-[#e8edf5] placeholder:!text-[#5a7090] focus:!border-[#0ea5e9]",
-    formFieldLabel: "!text-[#8fa3be] !font-medium",
-    formFieldHintText: "!text-[#6a859e]",
+      "!bg-[#1e2d42] !border !border-[#3a5070] !text-white placeholder:!text-[#94a3b8] focus:!border-[#38bdf8]",
+    formFieldLabel: "!text-[#f8fafc] !font-semibold",
+    formFieldHintText: "!text-[#cbd5e1]",
     socialButtonsBlockButton:
-      "!bg-[#1e2d42] !border !border-[#2e4060] !text-[#d1dce8] hover:!bg-[#243452] hover:!border-[#3a5070]",
-    socialButtonsBlockButtonText: "!text-[#d1dce8] !font-medium",
-    dividerLine: "!bg-[#2e4060]",
-    dividerText: "!text-[#5a7090]",
-    footerActionLink: "!text-[#0ea5e9] hover:!text-[#38bdf8]",
-    footerActionText: "!text-[#6a859e]",
-    identityPreviewText: "!text-[#d1dce8]",
-    identityPreviewEditButtonIcon: "!text-[#0ea5e9]",
+      "!bg-[#1e2d42] !border !border-[#3a5070] !text-[#f8fafc] hover:!bg-[#243452] hover:!border-[#4a6080]",
+    socialButtonsBlockButtonText: "!text-[#f8fafc] !font-semibold",
+    dividerLine: "!bg-[#3a5070]",
+    dividerText: "!text-[#cbd5e1]",
+    footerActionLink: "!text-[#38bdf8] hover:!text-[#7dd3fc] !font-medium",
+    footerActionText: "!text-[#cbd5e1]",
+    identityPreviewText: "!text-[#f8fafc]",
+    identityPreviewEditButtonIcon: "!text-[#38bdf8]",
     otpCodeFieldInput:
-      "!bg-[#1e2d42] !border !border-[#2e4060] !text-[#e8edf5] focus:!border-[#0ea5e9]",
+      "!bg-[#1e2d42] !border !border-[#3a5070] !text-white focus:!border-[#38bdf8]",
     navbarButton:
-      "!text-[#8fa3be] hover:!text-[#d1dce8] hover:!bg-[#1e2d42]",
-    navbarButtonIcon: "!text-[#8fa3be]",
-    profileSectionTitleText: "!text-[#d1dce8] !font-medium",
-    profileSectionContent: "!border-t !border-[#2e4060]",
-    accordionTriggerButton: "!text-[#d1dce8] hover:!bg-[#1e2d42]",
-    badge: "!text-[#d1dce8] !border-[#2e4060]",
-    menuList: "!border !border-[#2e4060]",
-    menuItem: "!text-[#d1dce8] hover:!bg-[#1e2d42]",
-    actionCard: "!border !border-[#2e4060]",
+      "!text-[#f8fafc] hover:!text-white hover:!bg-[#1e2d42] !font-medium",
+    navbarButtonIcon: "!text-[#f8fafc]",
+    profileSectionTitleText: "!text-white !font-bold !text-lg",
+    profileSectionContent: "!border-t !border-[#3a5070] !py-6",
+    accordionTriggerButton: "!text-white hover:!bg-[#1e2d42] !font-medium",
+    badge: "!text-[#f8fafc] !border-[#3a5070] !bg-[#1e2d42]",
+    menuList: "!border !border-[#3a5070] !bg-[#0f1623]",
+    menuItem: "!text-white hover:!bg-[#1e2d42]",
+    actionCard: "!border !border-[#3a5070] !bg-[#1e2d42]",
     pageScrollBox: "!bg-[#0f1623]",
-    userPreviewMainIdentifier: "!text-[#e8edf5]",
-    userPreviewSecondaryIdentifier: "!text-[#8fa3be]",
-    formResendCodeLink: "!text-[#0ea5e9]",
+    userPreviewMainIdentifier: "!text-white !font-bold",
+    userPreviewSecondaryIdentifier: "!text-[#e2e8f0]",
+    formResendCodeLink: "!text-[#38bdf8]",
     alternativeMethodsBlockButton:
-      "!bg-[#1e2d42] !border !border-[#2e4060] !text-[#d1dce8] hover:!bg-[#243452]",
+      "!bg-[#1e2d42] !border !border-[#3a5070] !text-[#f8fafc] hover:!bg-[#243452]",
+    profilePage__headerTitle: "!text-white !font-bold !text-2xl",
+    profilePage__headerSubtitle: "!text-[#e2e8f0]",
+    profileSection__title: "!text-white !font-bold",
+    userButtonPopoverActionButtonText: "!text-white",
+    userButtonPopoverActionButtonIcon: "!text-[#38bdf8]",
   },
 };
 
@@ -133,6 +140,7 @@ function Router() {
       <Route path="/status/:slug" component={PublicStatusPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/cookies" component={CookiePolicyPage} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={DashboardPage} />} />
       <Route path="/monitors/new" component={() => <ProtectedRoute component={MonitorNewPage} />} />
       <Route path="/monitors/:id/edit" component={() => <ProtectedRoute component={MonitorEditPage} />} />
@@ -184,6 +192,7 @@ function App() {
               <Router />
             </WouterRouter>
             <Toaster />
+            <CookieBanner />
           </TooltipProvider>
         </QueryClientProvider>
       </ClerkProvider>

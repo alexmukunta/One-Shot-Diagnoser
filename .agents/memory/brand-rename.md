@@ -18,8 +18,5 @@ The product is called **One Shot Diagnoser**. Use this name everywhere user-faci
 ## Do NOT rename
 - `lib/api-zod/src/generated/*` — auto-generated from OpenAPI `info.title: "URL Diagnostics"`; renaming `info.title` would change all generated filenames and break imports. Leave these as-is.
 - `lib/api-client-react/src/generated/*` — same reason.
-- `replit.md` title — updated separately to "One Shot Diagnoser".
-
-## Clerk sign-in title
-Clerk's default "Sign in to Scaly Suspicious Machines" is overridden via the `localization` prop on `<ClerkProvider>` in `App.tsx`. No Clerk dashboard access needed.
-**How to apply:** Always use the `localization` prop — never try to change the Replit Clerk app name directly.
+- Product renamed to "One Shot Diagnoser"
+**How to apply:** Always use the `localization` prop — never try to change the Clerk app name directly.

@@ -373,13 +373,19 @@ export async function diagnoseUrl(rawUrl: string): Promise<DiagnoseResult> {
         }
 
         if (httpStatus >= 300 && httpStatus < 400 && res.headers.location) {
+          let resolvedLocation: string;
+          try {
+            resolvedLocation = new URL(res.headers.location, currentUrl).toString();
+          } catch {
+            resolvedLocation = res.headers.location;
+          }
           redirectChain.push({
             from: currentUrl,
-            to: res.headers.location,
+            to: resolvedLocation,
             status: httpStatus,
           });
           res.resume();
-          doRequest(res.headers.location, hops + 1);
+          doRequest(resolvedLocation, hops + 1);
           return;
         }
 

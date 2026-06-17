@@ -32,9 +32,11 @@ const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 1_000;
 
 const APP_DOMAIN =
-  process.env.REPLIT_DOMAINS?.split(",")[0]?.trim() ??
-  "one-shot-diagnoser.replit.app";
-const APP_URL = `https://${APP_DOMAIN}`;
+  process.env.APP_DOMAIN ??
+  process.env.PUBLIC_URL ??
+  process.env.APP_URL ??
+  "one-shot-diagnoser.example.com";
+const APP_URL = APP_DOMAIN.includes("://") ? APP_DOMAIN : `https://${APP_DOMAIN}`;
 
 async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
   let lastErr: unknown;

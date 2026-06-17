@@ -10,6 +10,7 @@ export default function IncidentsPage() {
   const { data, isLoading } = useListIncidents(undefined, {
     query: { queryKey: getListIncidentsQueryKey() },
   });
+  const incidentList = Array.isArray(data?.items) ? data.items : [];
 
   return (
     <AppLayout>
@@ -17,7 +18,7 @@ export default function IncidentsPage() {
         <div className="mb-6">
           <h1 className="text-xl font-semibold">Incidents</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {data ? `${data.total} total incidents` : ""}
+            {data?.total != null ? `${data?.total} total incidents` : ""}
           </p>
         </div>
 
@@ -25,7 +26,7 @@ export default function IncidentsPage() {
           <div className="space-y-2">
             {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
           </div>
-        ) : !data?.items.length ? (
+        ) : incidentList.length === 0 ? (
           <div className="bg-card border border-card-border rounded-lg p-12 text-center">
             <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-6 h-6 text-green-500" />
@@ -45,7 +46,7 @@ export default function IncidentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.items.map((inc) => (
+                {incidentList.map((inc) => (
                   <tr key={inc.id} className="border-b border-border last:border-0 hover:bg-accent/30 transition-colors">
                     <td className="px-4 py-3">
                       <Link

@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { useGetDashboard, getGetDashboardQueryKey } from "@workspace/api-client-react";
+import { useGetDashboard, getGetDashboardQueryKey, useListStatusPages, getListStatusPagesQueryKey } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/AppLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,12 @@ export default function DashboardPage() {
     query: { queryKey: getGetDashboardQueryKey() },
   });
 
-  const isEmpty = !isLoading && (data?.summary.total ?? 0) === 0;
+  const { data: statusPagesData, isLoading: isLoadingPages } = useListStatusPages({
+    query: { queryKey: getListStatusPagesQueryKey() },
+  });
+  const statusPageList = Array.isArray(statusPagesData) ? statusPagesData : [];
+
+  const isEmpty = !isLoading && (data?.summary?.total ?? 0) === 0;
 
   return (
     <AppLayout>
@@ -71,12 +76,20 @@ export default function DashboardPage() {
             <p className="text-sm text-muted-foreground mt-0.5">Overview of all monitors</p>
           </div>
           {!isEmpty && (
-            <Link href="/monitors/new">
-              <Button size="sm" className="gap-2" data-testid="button-add-monitor">
-                <Plus className="w-4 h-4" />
-                Add monitor
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/status-pages">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Activity className="w-4 h-4" />
+                  Status Pages
+                </Button>
+              </Link>
+              <Link href="/monitors/new">
+                <Button size="sm" className="gap-2" data-testid="button-add-monitor">
+                  <Plus className="w-4 h-4" />
+                  Add monitor
+                </Button>
+              </Link>
+            </div>
           )}
         </div>
 
@@ -96,51 +109,91 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                <StatCard label="Total" value={data?.summary.total ?? 0} color="hsl(215,20%,90%)" />
-                <StatCard label="Up" value={data?.summary.up ?? 0} color="#22C55E" />
-                <StatCard label="Down" value={data?.summary.down ?? 0} color="#EF4444" />
-                <StatCard label="Degraded" value={data?.summary.degraded ?? 0} color="#F59E0B" />
+                <StatCard label="Total" value={data?.summary?.total ?? 0} color="hsl(215,20%,90%)" />
+                <StatCard label="Up" value={data?.summary?.up ?? 0} color="#22C55E" />
+                <StatCard label="Down" value={data?.summary?.down ?? 0} color="#EF4444" />
+                <StatCard label="Degraded" value={data?.summary?.degraded ?? 0} color="#F59E0B" />
               </div>
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Monitor list */}
-              <div className="lg:col-span-2">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-medium text-foreground">Monitors</h2>
-                  <Link href="/monitors" className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
-                    View all <ArrowRight className="w-3 h-3" />
-                  </Link>
+              <div className="lg:col-span-2 space-y-6">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-medium text-foreground">Monitors</h2>
+                    <Link href="/monitors" className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                      View all <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                  <div className="space-y-2">
+                    {isLoading
+                      ? [...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)
+                      : data?.monitors?.slice(0, 8).map((m) => (
+                        <Link
+                          key={m.id}
+                          href={`/monitors/${m.id}`}
+                          data-testid={`monitor-row-${m.id}`}
+                          className="flex items-center gap-3 bg-card border border-card-border rounded-lg px-4 py-3 hover:border-border transition-colors group"
+                        >
+                          <StatusBadge status={m.status} size="xs" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-foreground truncate">{m.name}</div>
+                            <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                              {m.url}
+                              <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-50" />
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0 hidden sm:block">
+                            <div className="text-xs font-mono text-muted-foreground">
+                              {m.lastResponseTimeMs != null ? `${m.lastResponseTimeMs}ms` : "—"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              <UptimePercent value={m.uptime24h} />
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    }
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  {isLoading
-                    ? [...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)
-                    : data?.monitors.slice(0, 8).map((m) => (
-                      <Link
-                        key={m.id}
-                        href={`/monitors/${m.id}`}
-                        data-testid={`monitor-row-${m.id}`}
-                        className="flex items-center gap-3 bg-card border border-card-border rounded-lg px-4 py-3 hover:border-border transition-colors group"
-                      >
-                        <StatusBadge status={m.status} size="xs" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-foreground truncate">{m.name}</div>
-                          <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                            {m.url}
-                            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-50" />
-                          </div>
+
+                {/* Status Pages section */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-medium text-foreground">Status Pages</h2>
+                    <Link href="/status-pages" className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                      Manage <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {isLoadingPages
+                      ? [...Array(2)].map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)
+                      : !statusPageList.length
+                      ? (
+                        <div className="sm:col-span-2 bg-card border border-card-border border-dashed rounded-lg p-6 text-center">
+                          <div className="text-xs text-muted-foreground mb-2">No status pages yet</div>
+                          <Link href="/status-pages">
+                            <Button variant="outline" size="xs">Create your first status page</Button>
+                          </Link>
                         </div>
-                        <div className="text-right flex-shrink-0 hidden sm:block">
-                          <div className="text-xs font-mono text-muted-foreground">
-                            {m.lastResponseTimeMs != null ? `${m.lastResponseTimeMs}ms` : "—"}
+                      )
+                      : statusPageList.slice(0, 4).map((p) => (
+                        <Link
+                          key={p.id}
+                          href={`/status/${p.slug}`}
+                          target="_blank"
+                          className="flex items-center justify-between gap-3 bg-card border border-card-border rounded-lg px-4 py-3 hover:border-border transition-colors group"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-foreground truncate">{p.title}</div>
+                            <div className="text-[10px] font-mono text-muted-foreground truncate">/status/{p.slug}</div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            <UptimePercent value={m.uptime24h} />
-                          </div>
-                        </div>
-                      </Link>
-                    ))
-                  }
+                          <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </Link>
+                      ))
+                    }
+                  </div>
                 </div>
               </div>
 
@@ -162,7 +215,7 @@ export default function DashboardPage() {
                         <div className="text-xs text-muted-foreground">No recent incidents</div>
                       </div>
                     )
-                    : data.recentIncidents.map((inc) => (
+                    : data?.recentIncidents?.map((inc) => (
                       <Link
                         key={inc.id}
                         href={`/incidents/${inc.id}`}

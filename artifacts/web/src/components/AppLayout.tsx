@@ -41,8 +41,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="h-14 flex items-center px-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded bg-primary flex items-center justify-center">
-              <Activity className="w-4 h-4 text-white" />
+            <div className="w-7 h-7 rounded overflow-hidden flex items-center justify-center">
+              <img src="/status-icon.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-semibold text-sidebar-foreground tracking-tight text-sm">
               One Shot Diagnoser
@@ -116,6 +116,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </button>
             </div>
           )}
+          <div className="mt-2 px-3 flex items-center justify-between text-[10px] text-sidebar-foreground/50">
+            <Link href="/terms" className="hover:text-primary transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
+            <Link href="/cookies" className="hover:text-primary transition-colors">Cookies</Link>
+          </div>
         </div>
       </aside>
 

@@ -1,9 +1,9 @@
-import { useParams } from "wouter";
+import { Link, useParams } from "wouter";
 import { useGetPublicStatusPage, getGetPublicStatusPageQueryKey } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UptimeBars } from "@/components/UptimeBars";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { CheckCircle, AlertTriangle, Clock, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -16,20 +16,21 @@ export default function PublicStatusPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background p-8 max-w-3xl mx-auto">
-        <Skeleton className="h-8 w-64 mb-4" />
-        <Skeleton className="h-4 w-48 mb-8" />
-        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 rounded-lg mb-3" />)}
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (isError || !page) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="text-center">
-          <div className="text-2xl font-bold mb-2">Page not found</div>
-          <p className="text-muted-foreground">This status page does not exist or is not public</p>
+          <h1 className="text-2xl font-bold mb-2">Status Page Not Found</h1>
+          <p className="text-muted-foreground mb-6 text-sm">This status page does not exist or has been made private.</p>
+          <Link href="/" className="text-primary hover:underline text-sm font-medium">
+            Go back home
+          </Link>
         </div>
       </div>
     );
@@ -50,97 +51,140 @@ export default function PublicStatusPage() {
   const isDemo = slug === "demo";
 
   return (
-    <div className="min-h-screen bg-background">
-      {isDemo && (
-        <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-400 text-xs text-center py-2 px-4">
-          This is a demo status page with simulated data — not a real service.{" "}
-          <a href="/sign-up" className="underline underline-offset-2 hover:text-amber-300 transition-colors">Create your own →</a>
+    <div className="min-h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
+      {/* Background Wallpaper */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: "url('/landing-wallpaper.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          opacity: 0.4,
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 80% at 50% 50%, transparent 20%, hsl(var(--background) / 0.85) 100%)",
+        }}
+      />
+
+      <header className="relative z-10 border-b border-border/60 px-4 sm:px-6 h-14 flex items-center bg-background/95 backdrop-blur-sm sticky top-0 flex-shrink-0">
+        <div className="max-w-3xl mx-auto w-full flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 group transition-opacity hover:opacity-80">
+            <div className="w-7 h-7 rounded overflow-hidden flex items-center justify-center flex-shrink-0">
+              <img src="/status-icon.png" alt="Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="font-semibold text-sm tracking-tight truncate">One Shot Diagnoser</span>
+          </Link>
+
+          <Link href="/" className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors py-1 px-2 -mr-2">
+            <X className="w-3.5 h-3.5" />
+            Exit
+          </Link>
         </div>
-      )}
-      {/* Header */}
-      <div className="border-b border-border">
-        <div className="max-w-3xl mx-auto px-6 py-8">
-          <h1 className="text-2xl font-bold mb-1">{page.title}</h1>
+      </header>
+
+      <main className="relative z-10 flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-12">
+        {isDemo && (
+          <div className="mb-8 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs text-center py-2.5 px-4 rounded-lg">
+            This is a demo status page with simulated data — not a real service.{" "}
+            <a href="/sign-up" className="underline underline-offset-2 hover:text-amber-300 transition-colors">Create your own →</a>
+          </div>
+        )}
+
+        <div className="mb-10">
+          <h1 className="text-3xl font-bold tracking-tight mb-2">{page.title}</h1>
           {page.description && (
-            <p className="text-muted-foreground text-sm">{page.description}</p>
+            <p className="text-muted-foreground text-sm leading-relaxed max-w-xl">{page.description}</p>
           )}
         </div>
-      </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8 space-y-8">
-        {/* Overall status */}
-        <div className={cn(
-          "flex items-center gap-3 px-5 py-4 rounded-lg border",
-          page.overallStatus === "operational"
-            ? "bg-green-500/5 border-green-500/20"
-            : page.overallStatus === "degraded"
-            ? "bg-amber-500/5 border-amber-500/20"
-            : "bg-red-500/5 border-red-500/20"
-        )}>
-          <OverallIcon className={cn("w-5 h-5", overallColor)} />
-          <span className={cn("font-semibold capitalize", overallColor)}>
-            {page.overallStatus === "operational" ? "All systems operational" : page.overallStatus}
-          </span>
-        </div>
+        <div className="space-y-10">
+          {/* Overall status */}
+          <div className={cn(
+            "flex items-center gap-3 px-5 py-5 rounded-xl border-2 shadow-sm",
+            page.overallStatus === "operational"
+              ? "bg-green-500/5 border-green-500/20"
+              : page.overallStatus === "degraded"
+              ? "bg-amber-500/5 border-amber-500/20"
+              : "bg-red-500/5 border-red-500/20"
+          )}>
+            <OverallIcon className={cn("w-6 h-6", overallColor)} />
+            <span className={cn("text-lg font-bold capitalize", overallColor)}>
+              {page.overallStatus === "operational" ? "All Systems Operational" : page.overallStatus}
+            </span>
+          </div>
 
-        {/* Active incidents */}
-        {page.activeIncidents && page.activeIncidents.length > 0 && (
-          <div>
-            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground mb-3">Active Incidents</h2>
-            <div className="space-y-2">
-              {page.activeIncidents.map((inc) => (
-                <div key={inc.id} className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-sm font-medium text-red-400">{inc.monitorName}</span>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {formatDistanceToNow(new Date(inc.startedAt), { addSuffix: true })}
-                    </span>
+          {/* Active incidents */}
+          {page?.activeIncidents && page?.activeIncidents?.length > 0 && (
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4 px-1">Active Incidents</h2>
+              <div className="space-y-3">
+                {page?.activeIncidents?.map((inc) => (
+                  <div key={inc.id} className="bg-red-500/5 border border-red-500/20 rounded-xl p-5 shadow-sm">
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <span className="font-bold text-red-400">{inc.monitorName}</span>
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
+                        <Clock className="w-3.5 h-3.5" />
+                        {formatDistanceToNow(new Date(inc.startedAt), { addSuffix: true })}
+                      </span>
+                    </div>
+                    {inc.rootCause && (
+                      <p className="text-sm text-muted-foreground leading-relaxed">{inc.rootCause}</p>
+                    )}
                   </div>
-                  {inc.rootCause && (
-                    <p className="text-xs text-muted-foreground">{inc.rootCause}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Monitors */}
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4 px-1">Services</h2>
+            <div className="space-y-4">
+              {page?.monitors?.map((m, i) => (
+                <div key={i} className="bg-card/50 backdrop-blur-sm border border-card-border rounded-xl p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="font-bold text-sm tracking-tight">{m.name}</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        {m.uptime90d.toFixed(2)}% uptime
+                      </span>
+                      <StatusBadge status={m.status} size="xs" />
+                    </div>
+                  </div>
+                  {m?.dailyBars && m?.dailyBars?.length > 0 && (
+                    <UptimeBars
+                      bars={m?.dailyBars?.map((b) => ({ ...b, status: b.status as "up" | "down" | "degraded" | "nodata" }))}
+                      className="h-8"
+                    />
                   )}
+                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter text-muted-foreground/50 mt-2 px-0.5">
+                    <span>90 days ago</span>
+                    <span>Today</span>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-        )}
-
-        {/* Monitors */}
-        <div>
-          <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground mb-3">Services</h2>
-          <div className="space-y-3">
-            {page.monitors.map((m, i) => (
-              <div key={i} className="bg-card border border-card-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium">{m.name}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {m.uptime90d.toFixed(2)}% uptime
-                    </span>
-                    <StatusBadge status={m.status} size="xs" />
-                  </div>
-                </div>
-                {m.dailyBars && m.dailyBars.length > 0 && (
-                  <UptimeBars
-                    bars={m.dailyBars.map((b) => ({ ...b, status: b.status as "up" | "down" | "degraded" | "nodata" }))}
-                    className="h-6"
-                  />
-                )}
-                <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
-                  <span>90 days ago</span>
-                  <span>Today</span>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
-      </div>
+      </main>
 
-      {/* Footer */}
-      <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-        Powered by URL Diagnostics
-      </div>
+      <footer className="relative z-10 border-t border-border/60 py-10 text-center">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <div className="w-5 h-5 rounded overflow-hidden flex items-center justify-center">
+            <img src="/status-icon.png" alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          <span className="text-xs font-bold tracking-tight">One Shot Diagnoser</span>
+        </div>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
+          Powered by One Shot Diagnoser
+        </p>
+      </footer>
     </div>
   );
 }
