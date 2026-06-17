@@ -1,2 +1,0 @@
-- [Production audit fixes](audit-fixes.md) — key decisions made during the pre-launch audit pass (sql.raw, degraded status, IDOR, N+1)
-- [Brand rename](brand-rename.md) — product renamed from "URL Diagnostics" to "One Shot Diagnoser"; key files updated
