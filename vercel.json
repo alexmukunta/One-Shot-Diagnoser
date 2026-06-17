@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/artifacts/web/dist/public/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/artifacts/web/dist/public/index.html"
+    }
+  ]
+}
