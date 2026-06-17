@@ -59,6 +59,11 @@ app.use(cors({ credentials: true, origin: allowedOrigins }));
 app.use(express.json({ limit: "64kb" }));
 app.use(express.urlencoded({ extended: true, limit: "64kb" }));
 
+// Lightweight health check for external monitoring (Render, etc.)
+app.get("/health", (_req: Request, res: Response) => {
+  res.status(200).json({ status: "ok" });
+});
+
 app.use(
   clerkMiddleware((req) => ({
     publishableKey: publishableKeyFromHost(
