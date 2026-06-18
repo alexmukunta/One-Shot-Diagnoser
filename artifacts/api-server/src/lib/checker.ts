@@ -170,9 +170,14 @@ function getSslInfo(socket: tls.TLSSocket): {
 
 const MAX_BODY_BYTES = 512 * 1024; // 512 KB keyword scan limit
 
+const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+const CHECK_TIMEOUT_MS = 15000;
+
+// ... (other functions)
+
 export async function checkUrl(
   url: string,
-  timeoutMs = 10000,
+  timeoutMs = CHECK_TIMEOUT_MS,
   method = "GET",
   expectedStatus = 200,
   keywordAssertion?: string | null,
@@ -198,84 +203,113 @@ export async function checkUrl(
       });
     }, timeoutMs);
 
-    const parsed = new URL(url);
-    const isHttps = parsed.protocol === "https:";
-    const lib = isHttps ? https : http;
-
-    const options: https.RequestOptions = {
-      hostname: parsed.hostname,
-      port: parsed.port || (isHttps ? 443 : 80),
-      path: parsed.pathname + parsed.search,
-      method,
-      timeout: timeoutMs,
-      headers: { "User-Agent": "URLDiagnostics/1.0" },
-    };
-
-    const req = lib.request(options, (res) => {
-      const responseTimeMs = Date.now() - start;
-      clearTimeout(timer);
-
-      const httpStatus = res.statusCode ?? null;
-      const statusOk = httpStatus !== null && httpStatus === expectedStatus;
-
-      let sslValid: boolean | null = null;
-      let sslDaysRemaining: number | null = null;
-      if (isHttps && (req.socket as tls.TLSSocket).authorized !== undefined) {
-        const socket = req.socket as tls.TLSSocket;
-        const info = getSslInfo(socket);
-        sslValid = info.valid;
-        sslDaysRemaining = info.daysRemaining;
+    const doRequest = (currentUrl: string, hops = 0) => {
+      if (hops > 10) {
+        clearTimeout(timer);
+        settle({
+          status: "error",
+          httpStatus: null,
+          responseTimeMs: Date.now() - start,
+          errorMessage: "Too many redirects",
+          sslValid: null,
+          sslDaysRemaining: null,
+        });
+        return;
       }
 
-      if (keywordAssertion) {
-        const chunks: Buffer[] = [];
-        let bytesRead = 0;
-        res.on("data", (chunk: Buffer) => {
-          bytesRead += chunk.length;
-          if (bytesRead <= MAX_BODY_BYTES) chunks.push(chunk);
-        });
-        res.on("end", () => {
-          const body = Buffer.concat(chunks).toString("utf8");
-          const found = body.includes(keywordAssertion);
+      const parsed = new URL(currentUrl);
+      const isHttps = parsed.protocol === "https:";
+      const lib = isHttps ? https : http;
+
+      const options: https.RequestOptions = {
+        hostname: parsed.hostname,
+        port: parsed.port || (isHttps ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        method,
+        timeout: timeoutMs,
+        headers: { "User-Agent": USER_AGENT },
+      };
+
+      const req = lib.request(options, (res) => {
+        const httpStatus = res.statusCode ?? 0;
+
+        if (httpStatus >= 300 && httpStatus < 400 && res.headers.location) {
+          let resolvedLocation: string;
+          try {
+            resolvedLocation = new URL(res.headers.location, currentUrl).toString();
+          } catch {
+            resolvedLocation = res.headers.location;
+          }
+          res.resume();
+          doRequest(resolvedLocation, hops + 1);
+          return;
+        }
+
+        clearTimeout(timer);
+        const responseTimeMs = Date.now() - start;
+        const statusOk = httpStatus === expectedStatus;
+
+        let sslValid: boolean | null = null;
+        let sslDaysRemaining: number | null = null;
+        if (isHttps && (req.socket as tls.TLSSocket).authorized !== undefined) {
+          const socket = req.socket as tls.TLSSocket;
+          const info = getSslInfo(socket);
+          sslValid = info.valid;
+          sslDaysRemaining = info.daysRemaining;
+        }
+
+        if (keywordAssertion) {
+          const chunks: Buffer[] = [];
+          let bytesRead = 0;
+          res.on("data", (chunk: Buffer) => {
+            bytesRead += chunk.length;
+            if (bytesRead <= MAX_BODY_BYTES) chunks.push(chunk);
+          });
+          res.on("end", () => {
+            const body = Buffer.concat(chunks).toString("utf8");
+            const found = body.includes(keywordAssertion);
+            settle({
+              status: statusOk && found ? "up" : "down",
+              httpStatus,
+              responseTimeMs,
+              errorMessage: !statusOk
+                ? `Expected status ${expectedStatus}, got ${httpStatus}`
+                : !found
+                  ? `Keyword "${keywordAssertion}" not found in response`
+                  : null,
+              sslValid,
+              sslDaysRemaining,
+            });
+          });
+        } else {
+          res.resume();
           settle({
-            status: statusOk && found ? "up" : "down",
+            status: statusOk ? "up" : "down",
             httpStatus,
             responseTimeMs,
-            errorMessage: !statusOk
-              ? `Expected status ${expectedStatus}, got ${httpStatus}`
-              : !found
-                ? `Keyword "${keywordAssertion}" not found in response`
-                : null,
+            errorMessage: statusOk ? null : `Expected status ${expectedStatus}, got ${httpStatus}`,
             sslValid,
             sslDaysRemaining,
           });
-        });
-      } else {
-        res.resume();
-        settle({
-          status: statusOk ? "up" : "down",
-          httpStatus,
-          responseTimeMs,
-          errorMessage: statusOk ? null : `Expected status ${expectedStatus}, got ${httpStatus}`,
-          sslValid,
-          sslDaysRemaining,
-        });
-      }
-    });
-
-    req.on("error", (err) => {
-      clearTimeout(timer);
-      settle({
-        status: "error",
-        httpStatus: null,
-        responseTimeMs: Date.now() - start,
-        errorMessage: err.message,
-        sslValid: null,
-        sslDaysRemaining: null,
+        }
       });
-    });
 
-    req.end();
+      req.on("error", (err) => {
+        clearTimeout(timer);
+        settle({
+          status: "error",
+          httpStatus: null,
+          responseTimeMs: Date.now() - start,
+          errorMessage: err.message,
+          sslValid: null,
+          sslDaysRemaining: null,
+        });
+      });
+
+      req.end();
+    };
+
+    doRequest(url);
   });
 }
 
@@ -354,8 +388,8 @@ export async function diagnoseUrl(rawUrl: string): Promise<DiagnoseResult> {
         port: parsed.port || (isCurrentHttps ? 443 : 80),
         path: parsed.pathname + parsed.search,
         method: "GET",
-        timeout: 10000,
-        headers: { "User-Agent": "URLDiagnostics/1.0" },
+        timeout: 15000,
+        headers: { "User-Agent": USER_AGENT },
       };
 
       const req = lib.request(options, (res) => {
