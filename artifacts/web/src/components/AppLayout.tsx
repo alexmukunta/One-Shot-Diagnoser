@@ -15,6 +15,18 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarInset,
+  SidebarFooter,
+} from "@/components/ui/sidebar";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -35,11 +47,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-56 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col">
-        {/* Logo */}
-        <div className="h-14 flex items-center px-4 border-b border-sidebar-border">
+    <SidebarProvider>
+      <Sidebar collapsible="offcanvas" className="bg-sidebar border-r border-sidebar-border">
+        <SidebarHeader className="h-14 flex items-center px-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded overflow-hidden flex items-center justify-center">
               <img src="/status-icon.png" alt="Logo" className="w-full h-full object-contain" />
@@ -48,33 +58,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               One Shot Diagnoser
             </span>
           </div>
-        </div>
+        </SidebarHeader>
 
-        {/* Nav */}
-        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const active = location === href || location.startsWith(href + "/");
-            return (
-              <Link
-                key={href}
-                href={href}
-                data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-primary"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
+        <SidebarContent className="px-2 py-3">
+          <SidebarMenu>
+            {NAV.map(({ href, label, icon: Icon }) => {
+              const active = location === href || location.startsWith(href + "/");
+              return (
+                <SidebarMenuItem key={href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={active}
+                    className={cn(
+                      active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground"
+                    )}
+                  >
+                    <Link href={href} data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}>
+                      <Icon className="w-4 h-4" />
+                      <span>{label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
+        </SidebarContent>
 
-        {/* User menu */}
-        <div className="p-2 border-t border-sidebar-border">
+        <SidebarFooter className="border-t border-sidebar-border p-2">
           <button
             data-testid="user-menu-button"
             onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -82,11 +92,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
               {user?.imageUrl ? (
-                <img
-                  src={user.imageUrl}
-                  alt="avatar"
-                  className="w-6 h-6 rounded-full object-cover"
-                />
+                <img src={user.imageUrl} alt="avatar" className="w-6 h-6 rounded-full object-cover" />
               ) : (
                 <User className="w-3.5 h-3.5 text-primary" />
               )}
@@ -121,13 +127,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
             <Link href="/cookies" className="hover:text-primary transition-colors">Cookies</Link>
           </div>
-        </div>
-      </aside>
+        </SidebarFooter>
+      </Sidebar>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+      <SidebarInset>
+        <header className="h-14 border-b flex items-center px-4">
+          <SidebarTrigger />
+        </header>
+        <main className="flex-1 overflow-y-auto">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
