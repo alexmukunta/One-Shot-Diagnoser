@@ -1,13 +1,14 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CookieBanner } from "@/components/CookieBanner";
-import { ClerkProvider, SignIn, SignUp, useUser } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, useUser, useAuth } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { dark } from "@clerk/themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 import NotFound from "@/pages/not-found";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
@@ -182,10 +183,19 @@ const clerkLocalization = {
   },
 };
 
+function AuthTokenSetter() {
+  const { getToken } = useAuth();
+  useEffect(() => {
+    setAuthTokenGetter(getToken);
+  }, [getToken]);
+  return null;
+}
+
 function App() {
   return (
     <ErrorBoundary>
       <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance} localization={clerkLocalization}>
+        <AuthTokenSetter />
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <WouterRouter base={basePath}>
